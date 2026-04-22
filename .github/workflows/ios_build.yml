@@ -25,18 +25,18 @@ jobs:
     
     - name: Biên dịch App (Build)
       run: |
-        xcodebuild -project ios_app/YourAppName.xcodeproj \
-                   -scheme YourAppName \
+        xcodebuild -project ios_app/MLCChat/MLCChat.xcodeproj \
+                   -scheme MLCChat \
                    -sdk iphoneos \
                    -configuration Release \
-                   -archivePath $PWD/build/YourAppName.xcarchive \
+                   -archivePath $PWD/build/MLCChat.xcarchive \
                    archive
     
     - name: Xuất bản tệp .ipa
       run: |
         xcodebuild -exportArchive \
-                   -archivePath $PWD/build/YourAppName.xcarchive \
-                   -exportOptionsPlist ios_app/ExportOptions.plist \
+                   -archivePath $PWD/build/MLCChat.xcarchive \
+                   -exportOptionsPlist ios_app/MLCChat/ExportOptions.plist \
                    -exportPath $PWD/build/ipa
     
     - name: Đẩy tệp lên GitHub (Artifacts)
