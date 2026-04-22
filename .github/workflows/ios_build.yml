@@ -23,24 +23,27 @@ jobs:
         echo "Đang tải thư viện iOS MLC..."
         # Lệnh này sẽ tải các file .framework cần thiết cho iPhone
     
-    - name: Biên dịch App (Build)
+    - name: Biên dịch App (Build Unsigned)
       run: |
-        xcodebuild -project ios_app/MLCChat/MLCChat.xcodeproj \
+        xcodebuild build -project ios_app/MLCChat/MLCChat.xcodeproj \
                    -scheme MLCChat \
                    -sdk iphoneos \
                    -configuration Release \
-                   -archivePath $PWD/build/MLCChat.xcarchive \
-                   archive
-    
-    - name: Xuất bản tệp .ipa
+                   -derivedDataPath build_output \
+                   CODE_SIGNING_ALLOWED=NO \
+                   CODE_SIGNING_REQUIRED=NO \
+                   CODE_SIGN_ENTITLEMENTS="" \
+                   CODE_SIGNING_IDENTITY=""
+
+    - name: Đóng gói IPA thủ công (Manual IPA)
       run: |
-        xcodebuild -exportArchive \
-                   -archivePath $PWD/build/MLCChat.xcarchive \
-                   -exportOptionsPlist ios_app/MLCChat/ExportOptions.plist \
-                   -exportPath $PWD/build/ipa
+        mkdir -p Payload
+        APP_PATH=$(find build_output -name "*.app" | head -n 1)
+        cp -r "$APP_PATH" Payload/
+        zip -r MLCChat-Unsigned.ipa Payload
     
     - name: Đẩy tệp lên GitHub (Artifacts)
       uses: actions/upload-artifact@v4
       with:
         name: iPhone-App-IPA
-        path: build/ipa/*.ipa
+        path: MLCChat-Unsigned.ipa
