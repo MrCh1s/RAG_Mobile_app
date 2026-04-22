@@ -1,3 +1,3 @@
-# iOS App Project Structure
-- Place your Xcode project files here.
-- The 'iOS_RAG_ViewModel.swift' can be moved into the 'Source' directory of your future Xcode project.
+# MLC-LLM iOS
+
+[Documentation page](https://llm.mlc.ai/docs/deploy/ios.html)
