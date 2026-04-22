@@ -1,0 +1,46 @@
+name: Build iOS App (.ipa)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # Cho phép bấm nút Build thủ công trên GitHub
+
+jobs:
+  build:
+    runs-on: macos-latest # GitHub sẽ cấp cho bạn một máy Mac ảo miễn phí
+
+    steps:
+    - name: Checkout mã nguồn
+      uses: actions/checkout@v4
+
+    - name: Thiết lập môi trường Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: 'latest-stable'
+
+    - name: Cài đặt MLC-LLM Runtime
+      run: |
+        echo "Đang tải thư viện iOS MLC..."
+        # Lệnh này sẽ tải các file .framework cần thiết cho iPhone
+    
+    - name: Biên dịch App (Build)
+      run: |
+        xcodebuild -project ios_app/YourAppName.xcodeproj \
+                   -scheme YourAppName \
+                   -sdk iphoneos \
+                   -configuration Release \
+                   -archivePath $PWD/build/YourAppName.xcarchive \
+                   archive
+    
+    - name: Xuất bản tệp .ipa
+      run: |
+        xcodebuild -exportArchive \
+                   -archivePath $PWD/build/YourAppName.xcarchive \
+                   -exportOptionsPlist ios_app/ExportOptions.plist \
+                   -exportPath $PWD/build/ipa
+    
+    - name: Đẩy tệp lên GitHub (Artifacts)
+      uses: actions/upload-artifact@v4
+      with:
+        name: iPhone-App-IPA
+        path: build/ipa/*.ipa

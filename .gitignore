@@ -1,0 +1,21 @@
+# Ignore các file nặng của AI
+dist/
+mlc-llm/
+*.whl
+*.db
+Qwen2.5-1.5B-Instruct/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
