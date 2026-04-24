@@ -18,13 +18,24 @@ jobs:
       with:
         xcode-version: 'latest-stable'
 
-    - name: Cài đặt MLC-LLM Runtime
+    - name: Cài đặt MLC-LLM Runtime (Headers & Dependencies)
       run: |
-        echo "Đang tải thư viện iOS MLC..."
-        # Lệnh này sẽ tải các file .framework cần thiết cho iPhone
+        echo "Đang chuẩn bị thư viện và header cho MLC..."
+        # Clone mlc-llm để lấy mã nguồn TVM và header
+        git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git mlc-llm-temp
+        
+        # Chuẩn bị tvm_home cho MLCSwift (Sửa lỗi fatal error: 'tvm/ffi/extra/module.h' not found)
+        mkdir -p ios_app/MLCSwift/tvm_home
+        cp -r mlc-llm-temp/3rdparty/tvm/* ios_app/MLCSwift/tvm_home/
+        
+        # Chạy script chuẩn bị thư viện tĩnh .a
+        cd ios_app
+        MLC_LLM_SOURCE_DIR=../mlc-llm-temp bash prepare_libs.sh --arch arm64
     
     - name: Biên dịch App (Build Unsigned)
       run: |
+        # Đảm bảo đường dẫn build_output sạch sẽ
+        rm -rf build_output
         xcodebuild build -project ios_app/MLCChat/MLCChat.xcodeproj \
                    -scheme MLCChat \
                    -sdk iphoneos \
@@ -33,7 +44,8 @@ jobs:
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_ENTITLEMENTS="" \
-                   CODE_SIGNING_IDENTITY=""
+                   CODE_SIGNING_IDENTITY="" \
+                   AD_HOC_CODE_SIGNING_ALLOWED=YES
 
     - name: Đóng gói IPA thủ công (Manual IPA)
       run: |
