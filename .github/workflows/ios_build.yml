@@ -115,8 +115,9 @@ jobs:
     - name: Package models for iOS
       run: |
         cd ios_app/MLCChat
+        export PATH="$PATH:/home/runner/.local/bin"
         echo "Packaging models..."
-        mlc_llm package -o . --device iphone 2>&1 | tail -20
+        python3 -m mlc_llm package -o . --device iphone 2>&1 | tail -20
         
         if [ ! -f "bundle/mlc-app-config.json" ]; then
           echo "Warning: mlc-app-config.json not generated"
