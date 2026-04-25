@@ -68,11 +68,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-mlc-${{ matrix.platform }}-
 
-    - name: Clone MLC-LLM repository (if cache miss)
-      if: steps.cache-mlc.outputs.cache-hit != 'true'
+    - name: Clone MLC-LLM repository
       run: |
-        echo "Cache miss - cloning MLC-LLM..."
-        git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
+        if [ ! -d "mlc-llm" ]; then
+          echo "Cloning MLC-LLM..."
+          git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
+        fi
         du -sh mlc-llm/
 
     - name: Setup TVM headers
@@ -116,6 +117,7 @@ jobs:
       run: |
         cd ios_app/MLCChat
         export PATH="$PATH:/home/runner/.local/bin"
+        export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
         echo "Packaging models..."
         python3 -m mlc_llm package -o . 2>&1 | tail -20
         

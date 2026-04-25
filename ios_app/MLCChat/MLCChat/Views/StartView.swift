@@ -5,6 +5,7 @@
 //  Created by Yaxing Cai on 5/11/23.
 //
 
+import SwiftUI
 import SQLite3
 
 struct StartView: View {
