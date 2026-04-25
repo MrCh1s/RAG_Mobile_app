@@ -21,9 +21,21 @@ jobs:
     - name: Cài đặt Rust iOS target
       run: rustup target add aarch64-apple-ios
 
+    - name: Cache MLC-LLM Runtime
+      id: cache-mlc
+      uses: actions/cache@v4
+      with:
+        path: |
+          mlc-llm-temp
+          ios_app/build
+          ios_app/MLCSwift/tvm_home
+          ios_app/MLCChat/dist/lib
+        key: ${{ runner.os }}-mlc-runtime-${{ hashFiles('ios_app/prepare_libs.sh') }}
+
     - name: Cài đặt MLC-LLM Runtime (Headers & Dependencies)
+      if: steps.cache-mlc.outputs.cache-hit != 'true'
       run: |
-        echo "Đang chuẩn bị thư viện và header cho MLC..."
+        echo "Đang chuẩn bị thư viện và header cho MLC (Cache Miss)..."
         git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git mlc-llm-temp
         
         # Sửa lỗi thiếu header (đảm bảo ở cả MLCSwift và Root)
@@ -42,8 +54,14 @@ jobs:
         cp build/lib/*.a MLCChat/dist/lib/
         
         # Kiểm tra sự tồn tại của file
-        echo "Các thư viện đã chuẩn bị:"
+        echo "Các thư viện đã chuẩn bị (Cache Miss):"
         ls -lh MLCChat/dist/lib/
+
+    - name: Kiểm tra thư viện từ Cache
+      if: steps.cache-mlc.outputs.cache-hit == 'true'
+      run: |
+        echo "Sử dụng Runtime từ Cache."
+        ls -lh ios_app/MLCChat/dist/lib/
     
     - name: Biên dịch App (Build Unsigned)
       run: |
