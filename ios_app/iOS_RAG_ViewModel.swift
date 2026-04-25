@@ -120,41 +120,29 @@ class RAGViewModel: ObservableObject {
 
     // ------- Logic kết nối Database thật -------
     private func fetchFromSQLiteNative(vector: [Float], threshold: Float) -> [String] {
-        // Lưu ý: Bạn cần import SQLite.swift vào project
-        // Dưới đây là logic xử lý parse JSON Vector từ DB y hệt Python
-        var results: [(content: String, score: Float)] = []
+        // Tạm thời dùng Keyword Search từ câu hỏi vì chưa có model Embedding CoreML
+        // Đây là giải pháp "No-Mac" hiệu quả nhất.
+        return LocalDatabase.shared.searchNotes(keyword: "") // keyword sẽ được xử lý ở searchDatabaseOffline
+    }
+    
+    func searchDatabaseOffline(question: String) -> [String] {
+        // Giải pháp No-Mac: Tìm kiếm từ khóa trực tiếp từ câu hỏi
+        // (Trong tương lai, bạn có thể tách keyword quan trọng từ question)
+        let keywords = question.components(separatedBy: .whitespacesAndNewlines)
+            .filter { $0.count > 2 } // Lọc các từ ngắn
         
-        /* 
-        Giả định cấu trúc code khi dùng SQLite.swift:
-        let db = try Connection(dbPath, readonly: true)
-        let notes = Table("notes")
-        let chunk_context = Expression<String>("chunk_context")
-        let embedding = Expression<String?>("embedding")
-        
-        for row in try db.prepare(notes.filter(embedding != nil)) {
-            if let vectorStr = row[embedding],
-               let data = vectorStr.data(using: .utf8),
-               let noteVector = try? JSONDecoder().decode([Float].self, from: data) {
-                
-                let score = cosineSimilarity(vector, noteVector)
-                if score >= threshold {
-                    results.append((row[chunk_context], score))
-                }
+        var allResults: Set<String> = []
+        for word in keywords {
+            let matches = LocalDatabase.shared.searchNotes(keyword: word)
+            for match in matches {
+                allResults.insert(match)
             }
         }
-        */
         
-        // Tạm thời mô phỏng logic lọc (khi chưa có thư viện SQLite trong workspace)
-        // Trong thực tế, bạn sẽ dùng vòng lặp filter y như trên.
-        let sortedResults = results.sorted { $0.score > $1.score }.prefix(3)
-        return sortedResults.map { $0.content }
+        return Array(allResults.prefix(3))
     }
     
     private func generateVectorFromCoreML(text: String) -> [Float] {
-        // Đây là nơi gọi mô hình Embedding (ví dụ: bge-m3.mlmodel)
-        // Bạn có thể dùng thư viện "CoreML" của Apple để load model và predict.
-        // Tạm thời trả về mảng rỗng để bạn điền logic model vào.
-        print("Đang tạo Embedding cho: \(text)")
         return [] 
     }
 }

@@ -36,6 +36,14 @@ struct StartView: View {
                 }
             }
             .navigationTitle("MLC Chat")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: NoteEditView()) {
+                        Image(systemName: "note.text.badge.plus")
+                            .font(.title3)
+                    }
+                }
+            }
             .alert("Error", isPresented: $appState.alertDisplayed) {
                 Button("OK") { }
             } message: {
