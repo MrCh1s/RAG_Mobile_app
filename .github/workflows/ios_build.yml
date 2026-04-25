@@ -137,6 +137,18 @@ jobs:
 
     - name: Build Xcode project (${{ matrix.name }})
       run: |
+    - name: Free disk space
+      run: |
+        echo "Initial disk space:"
+        df -h
+        # Clean up macOS specific large directories
+        sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/*
+        echo "Disk space after cleanup:"
+        df -h
+
+    - name: Build Xcode project (${{ matrix.name }})
+      run: |
+        set -o pipefail
         cd ios_app/MLCChat
         rm -rf build_output
         
@@ -152,15 +164,13 @@ jobs:
           CODE_SIGN_ENTITLEMENTS="" \
           CODE_SIGNING_IDENTITY="" \
           AD_HOC_CODE_SIGNING_ALLOWED=YES \
-          2>&1 | tee build.log
+          -quiet | tee build.log
         
-        if [ $? -eq 0 ]; then
-          echo "✓ Xcode build successful"
-        else
-          echo "✗ Xcode build failed"
-          tail -100 build.log
-          exit 1
-        fi
+        # Cleanup large model cache after Xcode build completes
+        rm -rf ~/.cache/mlc_llm
+        rm -rf bundle/
+        
+        echo "✓ Xcode build successful"
 
     - name: Create IPA package (${{ matrix.name }})
       if: matrix.platform == 'iphoneos'
