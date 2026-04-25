@@ -165,6 +165,7 @@ jobs:
     - name: Create IPA package (${{ matrix.name }})
       if: matrix.platform == 'iphoneos'
       run: |
+        set -o pipefail
         cd ios_app/MLCChat
         
         # Use a more specific path to find the actual app bundle
@@ -172,15 +173,20 @@ jobs:
         
         if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
           echo "ERROR: Valid .app bundle not found in Release-iphoneos"
-          ls -R build_output/Build/Products/
+          ls -R build_output/Build/Products/ || true
           exit 1
         fi
         
         echo "Found app bundle at: $APP_PATH"
         
+        # Inspect bundle for debugging
+        ls -la "$APP_PATH"
+        
         # Check bundle contents (especially Info.plist and model weights)
         if [ ! -f "$APP_PATH/Info.plist" ]; then
           echo "ERROR: Info.plist missing in app bundle"
+          # Try to find where it went
+          find "$APP_PATH" -name "Info.plist"
           exit 1
         fi
         
@@ -188,13 +194,15 @@ jobs:
         mkdir -p Payload
         cp -r "$APP_PATH" Payload/
         
+        # Cleanup build_output to free space for the zip file
+        rm -rf build_output
+        
         zip -r -v "MLCChat-Qwen2.5-1.5B.ipa" Payload
         
         IPA_SIZE=$(du -h "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
         echo "✓ IPA created: MLCChat-Qwen2.5-1.5B.ipa ($IPA_SIZE)"
         
-        # Fail if IPA is too small (should be >100MB if models are bundled)
-        # Note: In CI, we expect it to be 2-3GB
+        # Fail if IPA is too small
         MIN_SIZE=100
         ACTUAL_SIZE_KB=$(du -k "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
         if [ "$ACTUAL_SIZE_KB" -lt "$((MIN_SIZE * 1024))" ]; then
