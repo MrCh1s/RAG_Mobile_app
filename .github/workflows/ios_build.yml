@@ -24,18 +24,26 @@ jobs:
     - name: Cài đặt MLC-LLM Runtime (Headers & Dependencies)
       run: |
         echo "Đang chuẩn bị thư viện và header cho MLC..."
-        # Clone mlc-llm để lấy mã nguồn và submodules
         git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git mlc-llm-temp
         
-        # Sửa lỗi thiếu header bằng cách tạo tvm_home ở các vị trí có khả năng
+        # Sửa lỗi thiếu header (đảm bảo ở cả MLCSwift và Root)
         mkdir -p ios_app/MLCSwift/tvm_home
         cp -r mlc-llm-temp/3rdparty/tvm/* ios_app/MLCSwift/tvm_home/
+        mkdir -p tvm_home
+        cp -r mlc-llm-temp/3rdparty/tvm/* tvm_home/
         
-        # Chạy script chuẩn bị thư viện tĩnh .a
+        # Build các thư viện tĩnh .a
         cd ios_app
-        # Thiết lập biến môi trường để script prepare_libs.sh tìm thấy nguồn
         export MLC_LLM_SOURCE_DIR=$(pwd)/../mlc-llm-temp
         bash prepare_libs.sh --arch arm64
+        
+        # Di chuyển thư viện vào đúng vị trí dist/lib mà Xcode mong đợi
+        mkdir -p MLCChat/dist/lib
+        cp build/lib/*.a MLCChat/dist/lib/
+        
+        # Kiểm tra sự tồn tại của file
+        echo "Các thư viện đã chuẩn bị:"
+        ls -lh MLCChat/dist/lib/
     
     - name: Biên dịch App (Build Unsigned)
       run: |
