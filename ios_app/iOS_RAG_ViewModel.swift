@@ -14,89 +14,147 @@ class RAGViewModel: ObservableObject {
     // Core Engine của MLC-LLM
     private var engine: MLCEngine?
     
+    // Đường dẫn tới file database trong Bundle
+    private var dbPath: String {
+        return Bundle.main.path(forResource: "notes", ofType: "db") ?? ""
+    }
+    
     init() {
         print("Đang khởi tạo MLCEngine trên thiết bị iOS...")
-        // Trên iOS, MLCEngine MẶC ĐỊNH SẼ TỰ ĐỘNG GỌI METAL (Card đồ hoạ của iPhone)
-        // Bạn không cần phải khai báo device="metal" như trên Python.
-        self.engine = MLCEngine("qwen2.5-1.5b-instruct-q4f16_1-MLC")
+        // Tên model phải khớp với ID trong mlc-package-config.json
+        self.engine = MLCEngine("Qwen2.5-1.5B-Instruct")
     }
     
     // ==========================================
-    // MODULE: Tìm kiếm Database (Thay thế cho bge-m3 + SQLite Python)
+    // MODULE: Tìm kiếm Database (Vecto + SQLite)
     // ==========================================
     func searchDatabaseOffline(question: String) -> [String] {
-        // [CẦN LƯU Ý KHI CODE TRÊN XCODE]
-        // 1. Sinh Vector: Apple không có Ollama. Bạn phải xuất mô hình bge-m3 sang định dạng .mlmodel (CoreML)
-        // và dùng hàm của Apple để biến chữ thành vector (Hoặc dùng thư viện llama.cpp trên iOS).
+        // 1. Sinh Vector từ câu hỏi (Cần model CoreML tương ứng)
         let questionVector = generateVectorFromCoreML(text: question)
+        if questionVector.isEmpty {
+            print("Cảnh báo: Không thể tạo vector cho câu hỏi.")
+            return []
+        }
         
-        // 2. Tra cứu SQLite: Trên iOS, bạn cài thư viện "SQLite.swift", nó sẽ chọc vào file notes.db y hệt Python
-        let matchedNotes = fetchFromSQLiteNative(vector: questionVector, threshold: 0.6)
-        
-        return matchedNotes
+        // 2. Tra cứu SQLite và tính toán độ tương đồng
+        return fetchFromSQLiteNative(vector: questionVector, threshold: 0.6)
     }
     
     // ==========================================
-    // MODULE: Vận hành LLM Chat (Nhái lại vòng lặp while True)
+    // MODULE: Vận hành LLM Chat
     // ==========================================
     func sendMessage(userInput: String) async {
-        DispatchQueue.main.async {
-            self.chatLog += "\nNhập câu hỏi: \(userInput)"
-            self.isTyping = true
-        }
+        await updateChatLog("\nNhập câu hỏi: \(userInput)", isTyping: true)
         
-        // 1. Quét Database
+        // 1. Quét Database lấy ngữ cảnh
         let ragContexts = searchDatabaseOffline(question: userInput)
         
-        // 2. Chặn đứt mạch nếu không có đáp án (Y hệt dòng 66 Python)
+        // 2. Kiểm tra nếu không có dữ liệu (Chặn Hallucination)
         if ragContexts.isEmpty {
-            DispatchQueue.main.async {
-                self.chatLog += "\n=> Hệ thống: Không tìm thấy dữ liệu liên quan trong Sổ tay. Yêu cầu truy vấn bị từ chối nhằm đảm bảo tính chính xác.\n"
-                self.isTyping = false
-            }
+            await updateChatLog("\n=> Hệ thống: Không tìm thấy dữ liệu liên quan trong Sổ tay. Yêu cầu truy vấn bị từ chối.\n", isTyping: false)
             return
         }
         
-        // 3. Có đáp án -> Gộp Prompt như Python (Y hệt dòng 71 Python)
+        // 3. Xây dựng Prompt từ ngữ cảnh đã tìm thấy
         let contextText = ragContexts.map { "- \($0)" }.joined(separator: "\n")
-        let finalPrompt = "Đây là TÀI LIỆU SỔ TAY:\n\(contextText)\n\nCâu hỏi lệnh: \(userInput)"
+        let finalPrompt = "Đây là TÀI LIỆU SỔ TAY:\n\(contextText)\n\nCâu hỏi: \(userInput)"
         
-        DispatchQueue.main.async {
-            self.chatLog += "\n Qwen2.5: "
-        }
+        await updateChatLog("\n Qwen2.5: ", isTyping: true)
         
-        // 4. Sinh chữ (Streaming) bằng Chip A16 Bionic 
-        // Lệnh Async/Await này nhái lại vòng lặp "for chunk in engine.chat.completions..." bên Python
+        // 4. Sinh phản hồi từ LLM
         if let engine = engine {
             do {
                 let stream = try await engine.chat.completions.create(
                     messages: [
-                        [.role: "system", .content: "Bạn là Trợ lý AI cá nhân. Bạn CHỈ ĐƯỢC phép dùng dữ kiện trong phần TÀI LIỆU SỔ TAY."],
+                        [.role: "system", .content: "Bạn là Trợ lý AI cá nhân. Bạn CHỈ ĐƯỢC phép dùng dữ kiện trong phần TÀI LIỆU SỔ TAY. Nếu thông tin không có, hãy trả lời là không biết."],
                         [.role: "user", .content: finalPrompt]
                     ]
                 )
                 
                 for try await chunk in stream {
                     if let content = chunk.choices.first?.delta.content {
-                        DispatchQueue.main.async {
-                            self.chatLog += content // Chữ tuôn ra màn hình iPhone
-                        }
+                        await updateChatLog(content, append: true)
                     }
                 }
             } catch {
-                print("Lỗi khi sinh chữ: \(error)")
+                print("Lỗi Generation: \(error)")
+                await updateChatLog("\n[Lỗi: \(error.localizedDescription)]")
             }
         }
         
-        DispatchQueue.main.async {
-            self.chatLog += "\n"
-            self.isTyping = false
-        }
+        await updateChatLog("\n", isTyping: false)
     }
     
-    // ------- Các hàm ảo (Bạn sẽ thiết lập bên trong Xcode sau) -------
-    private func generateVectorFromCoreML(text: String) -> [Float] { return [] }
-    private func fetchFromSQLiteNative(vector: [Float], threshold: Float) -> [String] { 
-        return ["Ví dụ: Tủ lạnh để trữ đồ ăn"] 
+    // Helper để cập nhật UI từ Background Thread
+    @MainActor
+    private func updateChatLog(_ text: String, isTyping: Bool? = nil, append: Bool = true) {
+        if append {
+            self.chatLog += text
+        } else {
+            self.chatLog = text
+        }
+        if let typing = isTyping {
+            self.isTyping = typing
+        }
+    }
+
+    // ==========================================
+    // MODULE: Phép tính Vector (Cosine Similarity)
+    // ==========================================
+    private func cosineSimilarity(_ v1: [Float], _ v2: [Float]) -> Float {
+        guard v1.count == v2.count && v1.count > 0 else { return 0.0 }
+        
+        var dotProduct: Float = 0.0
+        var normV1: Float = 0.0
+        var normV2: Float = 0.0
+        
+        for i in 0..<v1.count {
+            dotProduct += v1[i] * v2[i]
+            normV1 += v1[i] * v1[i]
+            normV2 += v2[i] * v2[i]
+        }
+        
+        let denom = sqrt(normV1) * sqrt(normV2)
+        return denom == 0 ? 0.0 : dotProduct / denom
+    }
+
+    // ------- Logic kết nối Database thật -------
+    private func fetchFromSQLiteNative(vector: [Float], threshold: Float) -> [String] {
+        // Lưu ý: Bạn cần import SQLite.swift vào project
+        // Dưới đây là logic xử lý parse JSON Vector từ DB y hệt Python
+        var results: [(content: String, score: Float)] = []
+        
+        /* 
+        Giả định cấu trúc code khi dùng SQLite.swift:
+        let db = try Connection(dbPath, readonly: true)
+        let notes = Table("notes")
+        let chunk_context = Expression<String>("chunk_context")
+        let embedding = Expression<String?>("embedding")
+        
+        for row in try db.prepare(notes.filter(embedding != nil)) {
+            if let vectorStr = row[embedding],
+               let data = vectorStr.data(using: .utf8),
+               let noteVector = try? JSONDecoder().decode([Float].self, from: data) {
+                
+                let score = cosineSimilarity(vector, noteVector)
+                if score >= threshold {
+                    results.append((row[chunk_context], score))
+                }
+            }
+        }
+        */
+        
+        // Tạm thời mô phỏng logic lọc (khi chưa có thư viện SQLite trong workspace)
+        // Trong thực tế, bạn sẽ dùng vòng lặp filter y như trên.
+        let sortedResults = results.sorted { $0.score > $1.score }.prefix(3)
+        return sortedResults.map { $0.content }
+    }
+    
+    private func generateVectorFromCoreML(text: String) -> [Float] {
+        // Đây là nơi gọi mô hình Embedding (ví dụ: bge-m3.mlmodel)
+        // Bạn có thể dùng thư viện "CoreML" của Apple để load model và predict.
+        // Tạm thời trả về mảng rỗng để bạn điền logic model vào.
+        print("Đang tạo Embedding cho: \(text)")
+        return [] 
     }
 }

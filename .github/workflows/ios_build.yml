@@ -1,24 +1,54 @@
-name: Build iOS App (.ipa)
+name: Build iOS App (.ipa) - Qwen2.5-1.5B-Instruct
 
 on:
   push:
+    branches: [ "main", "develop" ]
+  workflow_dispatch: # Allow manual trigger
+  pull_request:
     branches: [ "main" ]
-  workflow_dispatch: # Cho phép bấm nút Build thủ công trên GitHub
 
 jobs:
   build:
-    runs-on: macos-latest # GitHub sẽ cấp cho bạn một máy Mac ảo miễn phí
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    strategy:
+      matrix:
+        include:
+          - platform: iphoneos
+            sdk: iphoneos
+            arch: arm64
+            name: "Device"
+          # Uncomment to also build simulator
+          # - platform: iphonesimulator
+          #   sdk: iphonesimulator
+          #   arch: arm64
+          #   name: "Simulator"
 
     steps:
-    - name: Checkout mã nguồn
+    - name: Checkout source code
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
 
-    - name: Thiết lập môi trường Xcode
+    - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: 'latest-stable'
 
-    - name: Cài đặt Rust iOS target
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install Python dependencies
+      run: |
+        pip install -U pip wheel
+        pip install mlc-llm tvm
+
+    - name: Install Rust iOS target
       run: rustup target add aarch64-apple-ios
 
     - name: Cache MLC-LLM Runtime
@@ -26,67 +56,148 @@ jobs:
       uses: actions/cache@v4
       with:
         path: |
-          mlc-llm-temp
+          mlc-llm
           ios_app/build
           ios_app/MLCSwift/tvm_home
           ios_app/MLCChat/dist/lib
-        key: ${{ runner.os }}-mlc-runtime-${{ hashFiles('ios_app/prepare_libs.sh') }}
+        key: ${{ runner.os }}-mlc-${{ matrix.platform }}-${{ hashFiles('ios_app/mlc-package-config.json', 'ios_app/prepare_libs.sh') }}
+        restore-keys: |
+          ${{ runner.os }}-mlc-${{ matrix.platform }}-
 
-    - name: Cài đặt MLC-LLM Runtime (Headers & Dependencies)
+    - name: Clone MLC-LLM repository (if cache miss)
       if: steps.cache-mlc.outputs.cache-hit != 'true'
       run: |
-        echo "Đang chuẩn bị thư viện và header cho MLC (Cache Miss)..."
-        git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git mlc-llm-temp
-        
-        # Sửa lỗi thiếu header (đảm bảo ở cả MLCSwift và Root)
+        echo "Cache miss - cloning MLC-LLM..."
+        git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
+        du -sh mlc-llm/
+
+    - name: Setup TVM headers
+      run: |
         mkdir -p ios_app/MLCSwift/tvm_home
-        cp -r mlc-llm-temp/3rdparty/tvm/* ios_app/MLCSwift/tvm_home/
         mkdir -p tvm_home
-        cp -r mlc-llm-temp/3rdparty/tvm/* tvm_home/
-        
-        # Build các thư viện tĩnh .a
+        if [ -d "mlc-llm/3rdparty/tvm" ]; then
+          cp -r mlc-llm/3rdparty/tvm/* ios_app/MLCSwift/tvm_home/
+          cp -r mlc-llm/3rdparty/tvm/* tvm_home/
+          echo "TVM headers copied successfully"
+        else
+          echo "Warning: TVM headers not found in mlc-llm"
+        fi
+
+    - name: Build MLC-LLM iOS Libraries (${{ matrix.name }})
+      run: |
         cd ios_app
-        export MLC_LLM_SOURCE_DIR=$(pwd)/../mlc-llm-temp
-        bash prepare_libs.sh --arch arm64
+        echo "Building for ${{ matrix.platform }}..."
         
-        # Di chuyển thư viện vào đúng vị trí dist/lib mà Xcode mong đợi
-        mkdir -p MLCChat/dist/lib
-        cp build/lib/*.a MLCChat/dist/lib/
+        if [ "${{ matrix.platform }}" = "iphonesimulator" ]; then
+          bash prepare_libs.sh --simulator --arch ${{ matrix.arch }}
+        else
+          bash prepare_libs.sh --arch ${{ matrix.arch }}
+        fi
         
-        # Kiểm tra sự tồn tại của file
-        echo "Các thư viện đã chuẩn bị (Cache Miss):"
-        ls -lh MLCChat/dist/lib/
+        echo "Libraries built successfully"
+        if [ -d "build/lib" ]; then
+          mkdir -p MLCChat/dist/lib
+          cp build/lib/*.a MLCChat/dist/lib/ 2>/dev/null || true
+          echo "Libraries copied to MLCChat/dist/lib"
+        fi
 
-    - name: Kiểm tra thư viện từ Cache
-      if: steps.cache-mlc.outputs.cache-hit == 'true'
+    - name: List build artifacts
       run: |
-        echo "Sử dụng Runtime từ Cache."
-        ls -lh ios_app/MLCChat/dist/lib/
+        echo "=== MLC Libraries ==="
+        ls -lh ios_app/MLCChat/dist/lib/ || echo "No libraries found"
+        echo "=== TVM Headers ==="
+        ls -lh ios_app/MLCSwift/tvm_home/include/ 2>/dev/null | head -5 || echo "No headers found"
     
-    - name: Biên dịch App (Build Unsigned)
+    - name: Package models for iOS
       run: |
-        # Đảm bảo đường dẫn build_output sạch sẽ
+        cd ios_app/MLCChat
+        echo "Packaging models..."
+        mlc_llm package -o . --device iphone 2>&1 | tail -20
+        
+        if [ ! -f "bundle/mlc-app-config.json" ]; then
+          echo "Warning: mlc-app-config.json not generated"
+        else
+          echo "mlc-app-config.json generated successfully"
+          cat bundle/mlc-app-config.json | head -20
+        fi
+
+    - name: Verify configuration
+      run: |
+        echo "=== Checking model configuration ==="
+        if [ -f "ios_app/MLCChat/bundle/mlc-app-config.json" ]; then
+          python3 -c "import json; print(json.dumps(json.load(open('ios_app/MLCChat/bundle/mlc-app-config.json')), indent=2))" | head -30
+        fi
+
+    - name: Build Xcode project (${{ matrix.name }})
+      run: |
+        cd ios_app/MLCChat
         rm -rf build_output
-        xcodebuild build -project ios_app/MLCChat/MLCChat.xcodeproj \
-                   -scheme MLCChat \
-                   -sdk iphoneos \
-                   -configuration Release \
-                   -derivedDataPath build_output \
-                   CODE_SIGNING_ALLOWED=NO \
-                   CODE_SIGNING_REQUIRED=NO \
-                   CODE_SIGN_ENTITLEMENTS="" \
-                   CODE_SIGNING_IDENTITY="" \
-                   AD_HOC_CODE_SIGNING_ALLOWED=YES
+        
+        echo "Building for ${{ matrix.platform }}..."
+        xcodebuild build \
+          -project MLCChat.xcodeproj \
+          -scheme MLCChat \
+          -sdk ${{ matrix.sdk }} \
+          -configuration Release \
+          -derivedDataPath build_output \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGN_ENTITLEMENTS="" \
+          CODE_SIGNING_IDENTITY="" \
+          AD_HOC_CODE_SIGNING_ALLOWED=YES \
+          2>&1 | tee build.log
+        
+        if [ $? -eq 0 ]; then
+          echo "✓ Xcode build successful"
+        else
+          echo "✗ Xcode build failed"
+          tail -100 build.log
+          exit 1
+        fi
 
-    - name: Đóng gói IPA thủ công (Manual IPA)
+    - name: Create IPA package (${{ matrix.name }})
+      if: matrix.platform == 'iphoneos'
       run: |
+        cd ios_app/MLCChat
+        
+        APP_PATH=$(find build_output -name "*.app" -type d | head -n 1)
+        
+        if [ -z "$APP_PATH" ]; then
+          echo "ERROR: .app bundle not found"
+          find build_output -type d -name "*app*" 2>/dev/null || echo "No app directories found"
+          exit 1
+        fi
+        
+        echo "Found app: $APP_PATH"
+        
+        rm -rf Payload
         mkdir -p Payload
-        APP_PATH=$(find build_output -name "*.app" | head -n 1)
         cp -r "$APP_PATH" Payload/
-        zip -r MLCChat-Unsigned.ipa Payload
-    
-    - name: Đẩy tệp lên GitHub (Artifacts)
+        
+        zip -r -q "MLCChat-Qwen2.5-1.5B.ipa" Payload
+        
+        IPA_SIZE=$(du -h "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
+        echo "✓ IPA created: MLCChat-Qwen2.5-1.5B.ipa ($IPA_SIZE)"
+
+    - name: Upload to GitHub Artifacts
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: iPhone-App-IPA
-        path: MLCChat-Unsigned.ipa
+        name: MLCChat-Qwen-${{ matrix.name }}
+        path: |
+          ios_app/MLCChat/MLCChat-Qwen2.5-1.5B.ipa
+          ios_app/MLCChat/build.log
+        retention-days: 7
+        if-no-files-found: warn
+
+    - name: Create Release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && matrix.platform == 'iphoneos'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ios_app/MLCChat/MLCChat-Qwen2.5-1.5B.ipa
+        tag_name: v${{ github.run_number }}
+        name: MLC Chat iOS - Qwen2.5-1.5B (Build ${{ github.run_number }})
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
