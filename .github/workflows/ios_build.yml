@@ -134,40 +134,41 @@ jobs:
       - name: Package models for iOS
         run: |
           set -o pipefail
-          # ↓ FIX: Run from workspace root to ensure all paths are correct
           export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
-          cd "$GITHUB_WORKSPACE"
 
-          echo "=== Checking mlc-package-config.json ==="
-          if [ ! -f "ios_app/MLCChat/mlc-package-config.json" ]; then
-            echo "ERROR: mlc-package-config.json not found in ios_app/MLCChat/"
-            ls -la ios_app/MLCChat/
-            exit 1
+          # Tìm đúng vị trí file config
+          CONFIG_PATH="$GITHUB_WORKSPACE/ios_app/MLCChat/mlc-package-config.json"
+          if [ ! -f "$CONFIG_PATH" ]; then
+          # Thử ở ios_app/ nếu không có trong MLCChat/
+          CONFIG_PATH="$GITHUB_WORKSPACE/ios_app/mlc-package-config.json"
           fi
-          cat ios_app/MLCChat/mlc-package-config.json
+          echo "Using config: $CONFIG_PATH"
+          cat "$CONFIG_PATH"
 
-          echo "=== Running mlc_llm package ==="
+          # Chạy từ thư mục chứa Xcode project
+          cd "$GITHUB_WORKSPACE/ios_app/MLCChat"
+
           echo "Python: $(which python3) ($(python3 --version))"
 
-          # ↓ FIX: output to ios_app/MLCChat/bundle directory
+          # Truyền đường dẫn tuyệt đối vào --package-config
           python3 -m mlc_llm package \
-            --config-path ios_app/MLCChat/mlc-package-config.json \
-            --output ios_app/MLCChat/bundle \
-            2>&1 | tee package.log || {
-              echo "=== PACKAGE FAILED - Last 50 lines of log ==="
-              tail -n 50 package.log
-              exit 1
-            }
+          --package-config "$CONFIG_PATH" \
+          --mlc-llm-source-dir "$MLC_LLM_SOURCE_DIR" \
+          --output . \
+          2>&1 | tee package.log || {
+          echo "=== PACKAGE FAILED ==="
+          tail -n 50 package.log
+          exit 1
+          }
 
-          echo "=== Package Output (Last 20 lines) ==="
+          echo "=== Last 20 lines ==="
           tail -n 20 package.log
 
-          if [ ! -f "ios_app/MLCChat/bundle/mlc-app-config.json" ]; then
+          if [ ! -f "bundle/mlc-app-config.json" ]; then
             echo "Warning: mlc-app-config.json not generated"
-            ls -R ios_app/MLCChat/bundle/ 2>/dev/null || echo "bundle/ directory missing"
           else
             echo "mlc-app-config.json generated successfully"
-            head -20 ios_app/MLCChat/bundle/mlc-app-config.json
+            head -20 bundle/mlc-app-config.json
           fi
 
       - name: Verify Libraries
