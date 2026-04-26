@@ -43,10 +43,10 @@ jobs:
       - name: Install Python dependencies
         run: |
           python3 -m pip install -U pip wheel pytest
-          # Use specific versions to avoid the RawStr bug in the latest nightlies
+          # Use nightly versions. We rely on --overrides to disable CUDA opts and potentially avoid the RawStr bug.
           python3 -m pip install --pre -U -f https://mlc.ai/wheels \
-            "mlc-llm-nightly-cpu<=0.19.dev200" \
-            "mlc-ai-nightly-cpu<=0.19.dev200"
+            mlc-llm-nightly-cpu \
+            mlc-ai-nightly-cpu
           # Verify mlc_llm is importable from the correct python
           python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
