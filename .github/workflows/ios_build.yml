@@ -3,7 +3,7 @@ name: Build iOS App (.ipa) - Qwen2.5-1.5B-Instruct
 on:
   push:
     branches: [ "main", "develop" ]
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
   pull_request:
     branches: [ "main" ]
 
@@ -22,252 +22,257 @@ jobs:
             sdk: iphoneos
             arch: arm64
             name: "Device"
-          # Uncomment to also build simulator
-          # - platform: iphonesimulator
-          #   sdk: iphonesimulator
-          #   arch: arm64
-          #   name: "Simulator"
 
     steps:
-    - name: Checkout source code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-        fetch-depth: 0
+      - name: Checkout source code
+        uses: actions/checkout@v4   # keep v4 until v5 is stable for your use case
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: 'latest-stable'
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Setup Python
+        uses: actions/setup-python@v5   # ← bumped to v5
+        with:
+          python-version: '3.11'        # ← 3.11 avoids some 3.10 compat bugs with mlc
 
-    - name: Install Python dependencies
-      run: |
-        python3 -m pip install -U pip wheel pytest
-        python3 -m pip install --pre -U -f https://mlc.ai/wheels \
-          mlc-llm-nightly-cpu \
-          mlc-ai-nightly-cpu
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install -U pip wheel
+          # Pin to a specific nightly that is known to work with Qwen2.5 tokenizer
+          python3 -m pip install --pre -U -f https://mlc.ai/wheels \
+            mlc-llm-nightly-cpu \
+            mlc-ai-nightly-cpu
+          # Verify mlc_llm is importable from the correct python
+          python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
-    - name: Install Rust iOS target
-      run: rustup target add aarch64-apple-ios
+      - name: Install Rust iOS target
+        run: rustup target add aarch64-apple-ios
 
-    - name: Cache MLC-LLM Runtime
-      id: cache-mlc
-      uses: actions/cache@v4
-      with:
-        path: |
-          mlc-llm
-          ios_app/build
-          ios_app/MLCSwift/tvm_home
-          ios_app/MLCChat/dist/lib
-        key: ${{ runner.os }}-mlc-${{ matrix.platform }}-${{ hashFiles('ios_app/mlc-package-config.json', 'ios_app/prepare_libs.sh') }}
-        restore-keys: |
-          ${{ runner.os }}-mlc-${{ matrix.platform }}-
+      - name: Cache MLC-LLM Runtime
+        id: cache-mlc
+        uses: actions/cache@v4
+        with:
+          path: |
+            mlc-llm
+            ios_app/build
+            ios_app/MLCSwift/tvm_home
+            ios_app/MLCChat/dist/lib
+          key: ${{ runner.os }}-mlc-${{ matrix.platform }}-${{ hashFiles('ios_app/mlc-package-config.json', 'ios_app/prepare_libs.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-mlc-${{ matrix.platform }}-
 
-    - name: Clone MLC-LLM repository
-      run: |
-        if [ ! -d "mlc-llm" ]; then
-          echo "Cloning MLC-LLM..."
-          git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
-        fi
-        du -sh mlc-llm/
+      - name: Clone MLC-LLM repository
+        run: |
+          if [ ! -d "mlc-llm" ]; then
+            echo "Cloning MLC-LLM..."
+            git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
+          fi
+          du -sh mlc-llm/
 
-    - name: Setup TVM headers
-      run: |
-        mkdir -p ios_app/MLCSwift/tvm_home
-        mkdir -p tvm_home
-        if [ -d "mlc-llm/3rdparty/tvm" ]; then
-          cp -r mlc-llm/3rdparty/tvm/* ios_app/MLCSwift/tvm_home/
-          cp -r mlc-llm/3rdparty/tvm/* tvm_home/
-          echo "TVM headers copied successfully"
-        else
-          echo "Warning: TVM headers not found in mlc-llm"
-        fi
+      - name: Setup TVM headers
+        run: |
+          mkdir -p ios_app/MLCSwift/tvm_home
+          mkdir -p tvm_home
+          if [ -d "mlc-llm/3rdparty/tvm" ]; then
+            cp -r mlc-llm/3rdparty/tvm/* ios_app/MLCSwift/tvm_home/
+            cp -r mlc-llm/3rdparty/tvm/* tvm_home/
+            echo "TVM headers copied successfully"
+          else
+            echo "Warning: TVM headers not found in mlc-llm"
+          fi
 
-    - name: Build MLC-LLM iOS Libraries (${{ matrix.name }})
-      run: |
-        set -o pipefail
-        cd ios_app
-        echo "Building for ${{ matrix.platform }}..."
-        
-        if [ "${{ matrix.platform }}" = "iphonesimulator" ]; then
-          bash prepare_libs.sh --simulator --arch ${{ matrix.arch }}
-        else
-          bash prepare_libs.sh --arch ${{ matrix.arch }}
-        fi
-        
-        echo "Libraries built successfully"
-        if [ -d "build/lib" ]; then
-          mkdir -p MLCChat/dist/lib
-          cp build/lib/*.a MLCChat/dist/lib/ 2>/dev/null || true
-          echo "Libraries copied to MLCChat/dist/lib"
-        else
-          echo "Error: build/lib directory not found!"
-          exit 1
-        fi
+      - name: Build MLC-LLM iOS Libraries (${{ matrix.name }})
+        run: |
+          set -o pipefail
+          cd ios_app
+          echo "Building for ${{ matrix.platform }}..."
 
-    - name: Debug Python Environment
-      run: |
-        echo "=== Python Debug Info ==="
-        which python3
-        python3 --version
-        python3 -c "import sys; print('Python executable:', sys.executable); print('Python path:', sys.path)"
-        python3 -m pip list | grep mlc
+          if [ "${{ matrix.platform }}" = "iphonesimulator" ]; then
+            bash prepare_libs.sh --simulator --arch ${{ matrix.arch }}
+          else
+            bash prepare_libs.sh --arch ${{ matrix.arch }}
+          fi
 
-    - name: List build artifacts
-      run: |
-        echo "=== MLC Libraries ==="
-        ls -lh ios_app/MLCChat/dist/lib/ || echo "No libraries found"
-        echo "=== TVM Headers ==="
-        ls -lh ios_app/MLCSwift/tvm_home/include/ 2>/dev/null | head -5 || echo "No headers found"
-    
-    - name: Free disk space
-      run: |
-        echo "Initial disk space:"
-        df -h
-        # Clean up macOS specific large directories
-        sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/*
-        echo "Disk space after cleanup:"
-        df -h
-
-    - name: Package models for iOS
-      run: |
-        set -o pipefail
-        cd ios_app/MLCChat
-        export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
-        
-        echo "Packaging models using $(python3 --version) at $(which python3)..."
-        # Run package command and capture output
-        python3 -m mlc_llm package -o . 2>&1 | tee package.log || (tail -n 100 package.log && exit 1)
-        
-        echo "=== Package Output (Last 20 lines) ==="
-        tail -n 20 package.log
-        
-        if [ ! -f "bundle/mlc-app-config.json" ]; then
-          echo "Warning: mlc-app-config.json not generated"
-        else
-          echo "mlc-app-config.json generated successfully"
-          cat bundle/mlc-app-config.json | head -20
-        fi
-
-    - name: Verify Libraries
-      run: |
-        set -o pipefail
-        echo "=== Verifying Libraries in ios_app/MLCChat/dist/lib ==="
-        ls -lh ios_app/MLCChat/dist/lib/
-        
-        REQUIRED_LIBS=(
-          "libmlc_llm_static.a"
-          "libmodel_iphone.a"
-        )
-        
-        for lib in "${REQUIRED_LIBS[@]}"; do
-          if [ ! -f "ios_app/MLCChat/dist/lib/$lib" ]; then
-            echo "Error: Required library $lib is missing!"
-            # List what IS there to help debugging
-            ls -R ios_app/MLCChat/dist/lib/
+          echo "Libraries built successfully"
+          if [ -d "build/lib" ]; then
+            mkdir -p MLCChat/dist/lib
+            cp build/lib/*.a MLCChat/dist/lib/ 2>/dev/null || true
+            echo "Libraries copied to MLCChat/dist/lib"
+          else
+            echo "Error: build/lib directory not found!"
             exit 1
           fi
-        done
-        echo "✓ All required libraries are present."
 
-    - name: Build Xcode project (${{ matrix.name }})
-      run: |
-        set -o pipefail
-        cd ios_app/MLCChat
-        rm -rf build_output
-        
-        echo "Building for ${{ matrix.platform }}..."
-        xcodebuild build \
-          -project MLCChat.xcodeproj \
-          -scheme MLCChat \
-          -sdk ${{ matrix.sdk }} \
-          -configuration Release \
-          -derivedDataPath build_output \
-          CODE_SIGNING_ALLOWED=NO \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGN_ENTITLEMENTS="" \
-          CODE_SIGNING_IDENTITY="" \
-          AD_HOC_CODE_SIGNING_ALLOWED=YES \
-          -quiet | tee build.log
-        
-        # Cleanup large model cache after Xcode build completes
-        rm -rf ~/.cache/mlc_llm
-        rm -rf bundle/
-        
-        echo "✓ Xcode build successful"
+      - name: Debug Python Environment
+        run: |
+          echo "=== Python Debug Info ==="
+          which python3
+          python3 --version
+          python3 -c "import sys; print('Python executable:', sys.executable)"
+          python3 -m pip list | grep -i mlc || echo "mlc not found in pip list!"
 
-    - name: Create IPA package (${{ matrix.name }})
-      if: matrix.platform == 'iphoneos'
-      run: |
-        set -o pipefail
-        cd ios_app/MLCChat
-        
-        # Use a more specific path to find the actual app bundle
-        APP_PATH=$(find build_output/Build/Products/Release-iphoneos -name "*.app" -type d | head -n 1)
-        
-        if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-          echo "ERROR: Valid .app bundle not found in Release-iphoneos"
-          ls -R build_output/Build/Products/ || true
-          exit 1
-        fi
-        
-        echo "Found app bundle at: $APP_PATH"
-        
-        # Inspect bundle for debugging
-        ls -la "$APP_PATH"
-        
-        # Check bundle contents (especially Info.plist and model weights)
-        if [ ! -f "$APP_PATH/Info.plist" ]; then
-          echo "ERROR: Info.plist missing in app bundle"
-          # Try to find where it went
-          find "$APP_PATH" -name "Info.plist"
-          exit 1
-        fi
-        
-        rm -rf Payload
-        mkdir -p Payload
-        cp -r "$APP_PATH" Payload/
-        
-        # Cleanup build_output to free space for the zip file
-        rm -rf build_output
-        
-        zip -r -v "MLCChat-Qwen2.5-1.5B.ipa" Payload
-        
-        IPA_SIZE=$(du -h "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
-        echo "✓ IPA created: MLCChat-Qwen2.5-1.5B.ipa ($IPA_SIZE)"
-        
-        # Fail if IPA is too small
-        MIN_SIZE=100
-        ACTUAL_SIZE_KB=$(du -k "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
-        if [ "$ACTUAL_SIZE_KB" -lt "$((MIN_SIZE * 1024))" ]; then
-          echo "ERROR: IPA size is suspiciously small ($IPA_SIZE). Packaging likely failed."
-          exit 1
-        fi
+      - name: List build artifacts
+        run: |
+          echo "=== MLC Libraries ==="
+          ls -lh ios_app/MLCChat/dist/lib/ || echo "No libraries found"
+          echo "=== TVM Headers ==="
+          ls -lh ios_app/MLCSwift/tvm_home/include/ 2>/dev/null | head -5 || echo "No headers found"
 
-    - name: Upload to GitHub Artifacts
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: MLCChat-Qwen-${{ matrix.name }}
-        path: |
-          ios_app/MLCChat/MLCChat-Qwen2.5-1.5B.ipa
-          ios_app/MLCChat/build.log
-        retention-days: 7
-        if-no-files-found: warn
+      - name: Free disk space
+        run: |
+          echo "Initial disk space:"
+          df -h
+          sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/*
+          echo "Disk space after cleanup:"
+          df -h
 
-    - name: Create Release
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push' && matrix.platform == 'iphoneos'
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ios_app/MLCChat/MLCChat-Qwen2.5-1.5B.ipa
-        tag_name: v${{ github.run_number }}
-        name: MLC Chat iOS - Qwen2.5-1.5B (Build ${{ github.run_number }})
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Package models for iOS
+        run: |
+          set -o pipefail
+          # ↓ FIX: Run from ios_app/ where mlc-package-config.json lives
+          cd ios_app
+          export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
+
+          echo "=== Checking mlc-package-config.json ==="
+          if [ ! -f "mlc-package-config.json" ]; then
+            echo "ERROR: mlc-package-config.json not found in $(pwd)"
+            ls -la
+            exit 1
+          fi
+          cat mlc-package-config.json
+
+          echo "=== Running mlc_llm package ==="
+          echo "Python: $(which python3) ($(python3 --version))"
+
+          # ↓ FIX: output to MLCChat/ directory, run from ios_app/
+          python3 -m mlc_llm package \
+            --output MLCChat \
+            2>&1 | tee package.log || {
+              echo "=== PACKAGE FAILED - Last 50 lines of log ==="
+              tail -n 50 package.log
+              exit 1
+            }
+
+          echo "=== Package Output (Last 20 lines) ==="
+          tail -n 20 package.log
+
+          if [ ! -f "MLCChat/bundle/mlc-app-config.json" ]; then
+            echo "Warning: mlc-app-config.json not generated"
+            ls -R MLCChat/bundle/ 2>/dev/null || echo "bundle/ directory missing"
+          else
+            echo "mlc-app-config.json generated successfully"
+            head -20 MLCChat/bundle/mlc-app-config.json
+          fi
+
+      - name: Verify Libraries
+        run: |
+          set -o pipefail
+          echo "=== Verifying Libraries in ios_app/MLCChat/dist/lib ==="
+          ls -lh ios_app/MLCChat/dist/lib/
+
+          REQUIRED_LIBS=(
+            "libmlc_llm_static.a"
+            "libmodel_iphone.a"
+          )
+
+          for lib in "${REQUIRED_LIBS[@]}"; do
+            if [ ! -f "ios_app/MLCChat/dist/lib/$lib" ]; then
+              echo "Error: Required library $lib is missing!"
+              ls -R ios_app/MLCChat/dist/lib/
+              exit 1
+            fi
+          done
+          echo "✓ All required libraries are present."
+
+      - name: Build Xcode project (${{ matrix.name }})
+        run: |
+          set -o pipefail
+          cd ios_app/MLCChat
+          rm -rf build_output
+
+          echo "Building for ${{ matrix.platform }}..."
+          xcodebuild build \
+            -project MLCChat.xcodeproj \
+            -scheme MLCChat \
+            -sdk ${{ matrix.sdk }} \
+            -configuration Release \
+            -derivedDataPath build_output \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            CODE_SIGNING_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            -quiet | tee build.log
+
+          rm -rf ~/.cache/mlc_llm
+          rm -rf bundle/
+
+          echo "✓ Xcode build successful"
+
+      - name: Create IPA package (${{ matrix.name }})
+        if: matrix.platform == 'iphoneos'
+        run: |
+          set -o pipefail
+          cd ios_app/MLCChat
+
+          APP_PATH=$(find build_output/Build/Products/Release-iphoneos -name "*.app" -type d | head -n 1)
+
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: Valid .app bundle not found in Release-iphoneos"
+            ls -R build_output/Build/Products/ || true
+            exit 1
+          fi
+
+          echo "Found app bundle at: $APP_PATH"
+          ls -la "$APP_PATH"
+
+          if [ ! -f "$APP_PATH/Info.plist" ]; then
+            echo "ERROR: Info.plist missing in app bundle"
+            find "$APP_PATH" -name "Info.plist"
+            exit 1
+          fi
+
+          rm -rf Payload
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          rm -rf build_output
+
+          zip -r -v "MLCChat-Qwen2.5-1.5B.ipa" Payload
+
+          IPA_SIZE=$(du -h "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
+          echo "✓ IPA created: MLCChat-Qwen2.5-1.5B.ipa ($IPA_SIZE)"
+
+          MIN_SIZE=100
+          ACTUAL_SIZE_KB=$(du -k "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
+          if [ "$ACTUAL_SIZE_KB" -lt "$((MIN_SIZE * 1024))" ]; then
+            echo "ERROR: IPA size is suspiciously small ($IPA_SIZE). Packaging likely failed."
+            exit 1
+          fi
+
+      - name: Upload to GitHub Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MLCChat-Qwen-${{ matrix.name }}
+          path: |
+            ios_app/MLCChat/MLCChat-Qwen2.5-1.5B.ipa
+            ios_app/MLCChat/build.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && matrix.platform == 'iphoneos'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ios_app/MLCChat/MLCChat-Qwen2.5-1.5B.ipa
+          tag_name: v${{ github.run_number }}
+          name: MLC Chat iOS - Qwen2.5-1.5B (Build ${{ github.run_number }})
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
