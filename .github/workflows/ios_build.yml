@@ -139,19 +139,19 @@ jobs:
           cd "$GITHUB_WORKSPACE"
 
           echo "=== Checking mlc-package-config.json ==="
-          if [ ! -f "ios_app/mlc-package-config.json" ]; then
-            echo "ERROR: mlc-package-config.json not found in ios_app/"
-            ls -la ios_app/
+          if [ ! -f "ios_app/MLCChat/mlc-package-config.json" ]; then
+            echo "ERROR: mlc-package-config.json not found in ios_app/MLCChat/"
+            ls -la ios_app/MLCChat/
             exit 1
           fi
-          cat ios_app/mlc-package-config.json
+          cat ios_app/MLCChat/mlc-package-config.json
 
           echo "=== Running mlc_llm package ==="
           echo "Python: $(which python3) ($(python3 --version))"
 
-          # ↓ FIX: output to ios_app/MLCChat/ directory, run from workspace root
+          # ↓ FIX: output to ios_app/MLCChat/bundle directory
           python3 -m mlc_llm package \
-            --config-path ios_app/mlc-package-config.json \
+            --config-path ios_app/MLCChat/mlc-package-config.json \
             --output ios_app/MLCChat/bundle \
             2>&1 | tee package.log || {
               echo "=== PACKAGE FAILED - Last 50 lines of log ==="
