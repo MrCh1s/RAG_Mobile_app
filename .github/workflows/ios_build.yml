@@ -42,7 +42,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python3 -m pip install -U pip wheel
+          python3 -m pip install -U pip wheel pytest
           # Pin to a specific nightly that is known to work with Qwen2.5 tokenizer
           python3 -m pip install --pre -U -f https://mlc.ai/wheels \
             mlc-llm-nightly-cpu \
