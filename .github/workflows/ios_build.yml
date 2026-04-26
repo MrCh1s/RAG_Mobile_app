@@ -181,9 +181,10 @@ jobs:
           echo "=== Verifying Libraries in ios_app/MLCChat/dist/lib ==="
           ls -lh ios_app/MLCChat/dist/lib/
 
+          # The newer build output uses libmlc_llm.a (not libmlc_llm_static.a)
           REQUIRED_LIBS=(
-            "libmlc_llm_static.a"
-            "libmodel_iphone.a"
+            "libmlc_llm.a"
+            "libtvm_runtime.a"
           )
 
           for lib in "${REQUIRED_LIBS[@]}"; do
@@ -193,7 +194,14 @@ jobs:
               exit 1
             fi
           done
+
+          # libmodel_iphone.a is produced by mlc_llm package; verify bundle instead
+          if [ ! -f "ios_app/MLCChat/bundle/mlc-app-config.json" ]; then
+            echo "Error: bundle/mlc-app-config.json missing - package step likely failed"
+            exit 1
+          fi
           echo "✓ All required libraries are present."
+          echo "✓ Model bundle exists."
 
       - name: Build Xcode project (${{ matrix.name }})
         run: |
