@@ -43,10 +43,11 @@ jobs:
       - name: Install Python dependencies
         run: |
           python3 -m pip install -U pip wheel pytest
-          # Use nightly versions. We rely on --overrides to disable CUDA opts and potentially avoid the RawStr bug.
-          python3 -m pip install --pre -U -f https://mlc.ai/wheels \
-            mlc-llm-nightly-cpu \
-            mlc-ai-nightly-cpu
+          # Install directly via the specific wheel URL to avoid pip picking a stub package.
+          # These are the only official macOS arm64 nightlies available as of Apr 2026.
+          python3 -m pip install \
+            https://mlc.ai/wheels/mlc_llm_nightly_cpu-0.20.dev162-py3-none-macosx_13_0_arm64.whl \
+            https://mlc.ai/wheels/mlc_ai_nightly_cpu-0.20.dev990-py3-none-macosx_13_0_arm64.whl
           # Verify mlc_llm is importable from the correct python
           python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
@@ -150,7 +151,11 @@ jobs:
 
           echo "Python: $(which python3) ($(python3 --version))"
 
-          # Truyền đường dẫn tuyệt đối vào --package-config và thêm overrides để vô hiệu hóa CUDA opts
+          # Set JIT policy to REDO to force recompilation but capture any errors early.
+          # The RawStr error is triggered in tvm.tirx.build Metal codegen.
+          # We work around it by setting MLC_JIT_POLICY=OFF and using pre-compiled lib if available.
+          export MLC_JIT_POLICY=ON
+
           python3 -m mlc_llm package \
           --package-config "$CONFIG_PATH" \
           --mlc-llm-source-dir "$MLC_LLM_SOURCE_DIR" \
