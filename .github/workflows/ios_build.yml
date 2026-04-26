@@ -183,6 +183,23 @@ jobs:
             head -20 bundle/mlc-app-config.json
           fi
 
+          # Locate the compiled model library and copy to dist/lib as libmodel_iphone.a
+          # mlc_llm package JIT-compiles the model into a .a file somewhere under /tmp or dist
+          echo "=== Searching for compiled model library ==="
+          find /tmp -name "*.a" 2>/dev/null | grep -v "\.build" | head -20 || true
+          find "$GITHUB_WORKSPACE/ios_app/MLCChat" -name "*.a" 2>/dev/null | head -20 || true
+
+          MODEL_LIB=$(find /tmp -name "*.a" 2>/dev/null | grep -i "qwen\|model\|iphone" | head -1)
+          if [ -n "$MODEL_LIB" ]; then
+            echo "Found model lib: $MODEL_LIB"
+            cp "$MODEL_LIB" "$GITHUB_WORKSPACE/ios_app/MLCChat/dist/lib/libmodel_iphone.a"
+            echo "Copied to dist/lib/libmodel_iphone.a"
+          else
+            echo "WARNING: Could not find compiled model library. Listing dist/ for debug:"
+            ls -Rh "$GITHUB_WORKSPACE/ios_app/MLCChat/dist/" 2>/dev/null || true
+            ls -Rh "$GITHUB_WORKSPACE/ios_app/MLCChat/bundle/" 2>/dev/null || true
+          fi
+
       - name: Verify Libraries
         run: |
           set -o pipefail
