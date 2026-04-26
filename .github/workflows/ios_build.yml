@@ -134,24 +134,25 @@ jobs:
       - name: Package models for iOS
         run: |
           set -o pipefail
-          # ↓ FIX: Run from ios_app/ where mlc-package-config.json lives
-          cd ios_app
+          # ↓ FIX: Run from workspace root to ensure all paths are correct
           export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
+          cd "$GITHUB_WORKSPACE"
 
           echo "=== Checking mlc-package-config.json ==="
-          if [ ! -f "mlc-package-config.json" ]; then
-            echo "ERROR: mlc-package-config.json not found in $(pwd)"
-            ls -la
+          if [ ! -f "ios_app/mlc-package-config.json" ]; then
+            echo "ERROR: mlc-package-config.json not found in ios_app/"
+            ls -la ios_app/
             exit 1
           fi
-          cat mlc-package-config.json
+          cat ios_app/mlc-package-config.json
 
           echo "=== Running mlc_llm package ==="
           echo "Python: $(which python3) ($(python3 --version))"
 
-          # ↓ FIX: output to MLCChat/ directory, run from ios_app/
+          # ↓ FIX: output to ios_app/MLCChat/ directory, run from workspace root
           python3 -m mlc_llm package \
-            --output MLCChat \
+            --config-path ios_app/mlc-package-config.json \
+            --output ios_app/MLCChat/bundle \
             2>&1 | tee package.log || {
               echo "=== PACKAGE FAILED - Last 50 lines of log ==="
               tail -n 50 package.log
@@ -161,12 +162,12 @@ jobs:
           echo "=== Package Output (Last 20 lines) ==="
           tail -n 20 package.log
 
-          if [ ! -f "MLCChat/bundle/mlc-app-config.json" ]; then
+          if [ ! -f "ios_app/MLCChat/bundle/mlc-app-config.json" ]; then
             echo "Warning: mlc-app-config.json not generated"
-            ls -R MLCChat/bundle/ 2>/dev/null || echo "bundle/ directory missing"
+            ls -R ios_app/MLCChat/bundle/ 2>/dev/null || echo "bundle/ directory missing"
           else
             echo "mlc-app-config.json generated successfully"
-            head -20 MLCChat/bundle/mlc-app-config.json
+            head -20 ios_app/MLCChat/bundle/mlc-app-config.json
           fi
 
       - name: Verify Libraries
