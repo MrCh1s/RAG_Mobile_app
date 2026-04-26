@@ -5,7 +5,14 @@
             "model": "HF://mlc-ai/Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
             "model_id": "qwen2.5-1.5b-q4f16_1-v0.1",
             "estimated_vram_bytes": 2600000000,
-            "bundle_weight": true
+            "bundle_weight": true,
+            "overrides": {
+                "flashinfer": 0,
+                "cublas_gemm": 0,
+                "faster_transformer": 0,
+                "cudagraph": 0,
+                "cutlass": 0
+            }
         }
     ]
 }

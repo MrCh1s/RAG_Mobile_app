@@ -155,7 +155,6 @@ jobs:
           --package-config "$CONFIG_PATH" \
           --mlc-llm-source-dir "$MLC_LLM_SOURCE_DIR" \
           --output . \
-          --overrides "flashinfer=0;cublas_gemm=0;faster_transformer=0;cudagraph=0;cutlass=0" \
           2>&1 | tee package.log || {
           echo "=== PACKAGE FAILED ==="
           tail -n 50 package.log
