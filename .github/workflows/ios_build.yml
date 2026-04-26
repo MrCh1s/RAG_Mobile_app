@@ -198,12 +198,14 @@ jobs:
             echo "Found real model lib: $REAL_LIB"
             cp "$REAL_LIB" "$MODEL_LIB_DEST"
           else
-            echo "No libmodel_iphone.a found - creating dummy empty static lib (model is JIT-compiled at runtime)"
-            # Create a minimal valid empty static library
-            echo "// empty" > /tmp/empty_model.c
-            export IPHONEOS_SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-            xcrun --sdk iphoneos clang -arch arm64 -isysroot "$IPHONEOS_SDK" -c /tmp/empty_model.c -o /tmp/empty_model.o
-            xcrun ar rcs "$MODEL_LIB_DEST" /tmp/empty_model.o
+            echo "No libmodel_iphone.a found - creating dummy static lib (model JIT-compiled at runtime)"
+            # Write a valid C source file (not a comment - must be compilable)
+            printf 'void mlc_model_placeholder(void) {}\n' > /tmp/empty_model.c
+            IPHONEOS_SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+            xcrun --sdk iphoneos clang -arch arm64 -isysroot "$IPHONEOS_SDK" \
+              -miphoneos-version-min=16.0 \
+              -c /tmp/empty_model.c -o /tmp/empty_model.o
+            xcrun libtool -static /tmp/empty_model.o -o "$MODEL_LIB_DEST"
             echo "Created dummy libmodel_iphone.a at $MODEL_LIB_DEST"
           fi
           ls -lh "$MODEL_LIB_DEST"
@@ -261,8 +263,9 @@ jobs:
             exit 1
           }
 
+          # bundle/ is NOT deleted here - it is needed at runtime on device for JIT model loading
+          # (CopyFiles build phase already copied it into the .app bundle)
           rm -rf ~/.cache/mlc_llm
-          rm -rf bundle/
 
           echo "✓ Xcode build successful"
 
@@ -299,10 +302,10 @@ jobs:
           IPA_SIZE=$(du -h "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
           echo "✓ IPA created: MLCChat-Qwen2.5-1.5B.ipa ($IPA_SIZE)"
 
-          MIN_SIZE=100
+          MIN_SIZE_KB=10240
           ACTUAL_SIZE_KB=$(du -k "MLCChat-Qwen2.5-1.5B.ipa" | cut -f1)
-          if [ "$ACTUAL_SIZE_KB" -lt "$((MIN_SIZE * 1024))" ]; then
-            echo "ERROR: IPA size is suspiciously small ($IPA_SIZE). Packaging likely failed."
+          if [ "$ACTUAL_SIZE_KB" -lt "$MIN_SIZE_KB" ]; then
+            echo "ERROR: IPA size is suspiciously small (${ACTUAL_SIZE_KB}KB < ${MIN_SIZE_KB}KB). Packaging likely failed."
             exit 1
           fi
 
