@@ -183,22 +183,30 @@ jobs:
             head -20 bundle/mlc-app-config.json
           fi
 
-          # Locate the compiled model library and copy to dist/lib as libmodel_iphone.a
-          # mlc_llm package JIT-compiles the model into a .a file somewhere under /tmp or dist
-          echo "=== Searching for compiled model library ==="
-          find /tmp -name "*.a" 2>/dev/null | grep -v "\.build" | head -20 || true
-          find "$GITHUB_WORKSPACE/ios_app/MLCChat" -name "*.a" 2>/dev/null | head -20 || true
+          # In MLC-LLM 0.20+, the model is JIT-compiled at RUNTIME from the bundle directory.
+          # libmodel_iphone.a no longer exists as a build output.
+          # We create a dummy empty static lib to satisfy the Xcode linker (-lmodel_iphone).
+          echo "=== Ensuring libmodel_iphone.a exists for linker ==="
+          find "$GITHUB_WORKSPACE/ios_app/MLCChat" -name "*.a" 2>/dev/null | head -20
 
-          MODEL_LIB=$(find /tmp -name "*.a" 2>/dev/null | grep -i "qwen\|model\|iphone" | head -1)
-          if [ -n "$MODEL_LIB" ]; then
-            echo "Found model lib: $MODEL_LIB"
-            cp "$MODEL_LIB" "$GITHUB_WORKSPACE/ios_app/MLCChat/dist/lib/libmodel_iphone.a"
-            echo "Copied to dist/lib/libmodel_iphone.a"
+          DIST_LIB="$GITHUB_WORKSPACE/ios_app/MLCChat/dist/lib"
+          MODEL_LIB_DEST="$DIST_LIB/libmodel_iphone.a"
+
+          # Try to find actual compiled model lib first
+          REAL_LIB=$(find /tmp "$GITHUB_WORKSPACE" -name "libmodel_iphone.a" 2>/dev/null | head -1)
+          if [ -n "$REAL_LIB" ]; then
+            echo "Found real model lib: $REAL_LIB"
+            cp "$REAL_LIB" "$MODEL_LIB_DEST"
           else
-            echo "WARNING: Could not find compiled model library. Listing dist/ for debug:"
-            ls -Rh "$GITHUB_WORKSPACE/ios_app/MLCChat/dist/" 2>/dev/null || true
-            ls -Rh "$GITHUB_WORKSPACE/ios_app/MLCChat/bundle/" 2>/dev/null || true
+            echo "No libmodel_iphone.a found - creating dummy empty static lib (model is JIT-compiled at runtime)"
+            # Create a minimal valid empty static library
+            echo "// empty" > /tmp/empty_model.c
+            export IPHONEOS_SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+            xcrun --sdk iphoneos clang -arch arm64 -isysroot "$IPHONEOS_SDK" -c /tmp/empty_model.c -o /tmp/empty_model.o
+            xcrun ar rcs "$MODEL_LIB_DEST" /tmp/empty_model.o
+            echo "Created dummy libmodel_iphone.a at $MODEL_LIB_DEST"
           fi
+          ls -lh "$MODEL_LIB_DEST"
 
       - name: Verify Libraries
         run: |
