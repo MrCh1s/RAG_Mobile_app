@@ -249,6 +249,19 @@ jobs:
           cd ios_app/MLCChat
           rm -rf build_output
 
+          # The Xcode CopyFiles build phase expects dist/bundle to exist.
+          # mlc_llm package creates bundle/ (not dist/bundle/).
+          # Create dist/bundle as a symlink so Xcode can copy the model into the .app
+          if [ -d "bundle" ] && [ ! -e "dist/bundle" ]; then
+            mkdir -p dist
+            ln -sf "$(pwd)/bundle" dist/bundle
+            echo "Created dist/bundle -> bundle symlink"
+          elif [ -e "dist/bundle" ]; then
+            echo "dist/bundle already exists"
+          else
+            echo "WARNING: bundle/ directory not found! Model will not be copied into .app"
+          fi
+
           echo "Building for ${{ matrix.platform }}..."
           xcodebuild build \
             -project MLCChat.xcodeproj \
