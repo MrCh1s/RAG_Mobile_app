@@ -108,6 +108,14 @@ jobs:
             exit 1
           fi
 
+          # Create backward-compatible symlinks for Xcode project expectations
+          cd MLCChat/dist/lib
+          if [ -f "libmlc_llm.a" ] && [ ! -f "libmlc_llm_static.a" ]; then
+            ln -sf libmlc_llm.a libmlc_llm_static.a
+            echo "Created symlink: libmlc_llm_static.a -> libmlc_llm.a"
+          fi
+          cd "$GITHUB_WORKSPACE"
+
       - name: Debug Python Environment
         run: |
           echo "=== Python Debug Info ==="
@@ -221,7 +229,12 @@ jobs:
             CODE_SIGN_ENTITLEMENTS="" \
             CODE_SIGNING_IDENTITY="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            -quiet | tee build.log
+            2>&1 | tee build.log || {
+            echo "=== XCODE BUILD FAILED ==="
+            echo "--- Last 100 lines of build.log ---"
+            tail -n 100 build.log
+            exit 1
+          }
 
           rm -rf ~/.cache/mlc_llm
           rm -rf bundle/
