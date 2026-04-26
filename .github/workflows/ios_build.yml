@@ -47,8 +47,8 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        pip install -U pip wheel pytest
-        pip install --pre -U -f https://mlc.ai/wheels \
+        python3 -m pip install -U pip wheel pytest
+        python3 -m pip install --pre -U -f https://mlc.ai/wheels \
           mlc-llm-nightly-cpu \
           mlc-ai-nightly-cpu
 
@@ -110,6 +110,14 @@ jobs:
           exit 1
         fi
 
+    - name: Debug Python Environment
+      run: |
+        echo "=== Python Debug Info ==="
+        which python3
+        python3 --version
+        python3 -c "import sys; print('Python executable:', sys.executable); print('Python path:', sys.path)"
+        python3 -m pip list | grep mlc
+
     - name: List build artifacts
       run: |
         echo "=== MLC Libraries ==="
@@ -130,10 +138,9 @@ jobs:
       run: |
         set -o pipefail
         cd ios_app/MLCChat
-        export PATH="$PATH:/home/runner/.local/bin"
         export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
         
-        echo "Packaging models..."
+        echo "Packaging models using $(python3 --version) at $(which python3)..."
         # Run package command and capture output
         python3 -m mlc_llm package -o . 2>&1 | tee package.log || (tail -n 100 package.log && exit 1)
         
