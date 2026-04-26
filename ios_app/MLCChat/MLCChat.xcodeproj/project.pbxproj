@@ -412,6 +412,7 @@
                 GENERATE_INFOPLIST_FILE = YES;
                 "HEADER_SEARCH_PATHS[arch=*]" = "";
                 INFOPLIST_FILE = MLCChat/Info.plist;
+                INFOPLIST_KEY_CFBundleDisplayName = "NoteAI Chat";
                 INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
                 INFOPLIST_KEY_NSCameraUsageDescription = "This app requires usage of camera to function properly.";
                 INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -466,6 +467,7 @@
                 GENERATE_INFOPLIST_FILE = YES;
                 "HEADER_SEARCH_PATHS[arch=*]" = "";
                 INFOPLIST_FILE = MLCChat/Info.plist;
+                INFOPLIST_KEY_CFBundleDisplayName = "NoteAI Chat";
                 INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
                 INFOPLIST_KEY_NSCameraUsageDescription = "This app requires usage of camera to function properly.";
                 INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

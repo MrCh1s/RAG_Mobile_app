@@ -51,7 +51,7 @@ class RAGViewModel: ObservableObject {
         
         // 2. Kiểm tra nếu không có dữ liệu (Chặn Hallucination)
         if ragContexts.isEmpty {
-            await updateChatLog("\n=> Hệ thống: Không tìm thấy dữ liệu liên quan trong Sổ tay. Yêu cầu truy vấn bị từ chối.\n", isTyping: false)
+            await updateChatLog("\n=> Hệ thống: Không tìm thấy dữ liệu liên quan trong Sổ tay.\n", isTyping: false)
             return
         }
         
@@ -66,7 +66,7 @@ class RAGViewModel: ObservableObject {
             do {
                 let stream = try await engine.chat.completions.create(
                     messages: [
-                        [.role: "system", .content: "Bạn là Trợ lý AI cá nhân. Bạn CHỈ ĐƯỢC phép dùng dữ kiện trong phần TÀI LIỆU SỔ TAY. Nếu thông tin không có, hãy trả lời là không biết."],
+                        [.role: "system", .content: "Bạn là Trợ lý AI cá nhân. Bạn CHỈ ĐƯỢC phép dùng dữ kiện trong phần TÀI LIỆU SỔ TAY. Nếu thông tin không có, hãy trả lời là \"không tìm thấy\"."],
                         [.role: "user", .content: finalPrompt]
                     ]
                 )
