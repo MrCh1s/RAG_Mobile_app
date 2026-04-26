@@ -90,6 +90,7 @@ jobs:
 
     - name: Build MLC-LLM iOS Libraries (${{ matrix.name }})
       run: |
+        set -o pipefail
         cd ios_app
         echo "Building for ${{ matrix.platform }}..."
         
@@ -104,6 +105,9 @@ jobs:
           mkdir -p MLCChat/dist/lib
           cp build/lib/*.a MLCChat/dist/lib/ 2>/dev/null || true
           echo "Libraries copied to MLCChat/dist/lib"
+        else
+          echo "Error: build/lib directory not found!"
+          exit 1
         fi
 
     - name: List build artifacts
@@ -113,30 +117,6 @@ jobs:
         echo "=== TVM Headers ==="
         ls -lh ios_app/MLCSwift/tvm_home/include/ 2>/dev/null | head -5 || echo "No headers found"
     
-    - name: Package models for iOS
-      run: |
-        cd ios_app/MLCChat
-        export PATH="$PATH:/home/runner/.local/bin"
-        export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
-        echo "Packaging models..."
-        python3 -m mlc_llm package -o . 2>&1 | tail -20
-        
-        if [ ! -f "bundle/mlc-app-config.json" ]; then
-          echo "Warning: mlc-app-config.json not generated"
-        else
-          echo "mlc-app-config.json generated successfully"
-          cat bundle/mlc-app-config.json | head -20
-        fi
-
-    - name: Verify configuration
-      run: |
-        echo "=== Checking model configuration ==="
-        if [ -f "ios_app/MLCChat/bundle/mlc-app-config.json" ]; then
-          python3 -c "import json; print(json.dumps(json.load(open('ios_app/MLCChat/bundle/mlc-app-config.json')), indent=2))" | head -30
-        fi
-
-    - name: Build Xcode project (${{ matrix.name }})
-      run: |
     - name: Free disk space
       run: |
         echo "Initial disk space:"
@@ -145,6 +125,48 @@ jobs:
         sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/*
         echo "Disk space after cleanup:"
         df -h
+
+    - name: Package models for iOS
+      run: |
+        set -o pipefail
+        cd ios_app/MLCChat
+        export PATH="$PATH:/home/runner/.local/bin"
+        export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
+        
+        echo "Packaging models..."
+        # Run package command and capture output
+        python3 -m mlc_llm package -o . 2>&1 | tee package.log || (tail -n 100 package.log && exit 1)
+        
+        echo "=== Package Output (Last 20 lines) ==="
+        tail -n 20 package.log
+        
+        if [ ! -f "bundle/mlc-app-config.json" ]; then
+          echo "Warning: mlc-app-config.json not generated"
+        else
+          echo "mlc-app-config.json generated successfully"
+          cat bundle/mlc-app-config.json | head -20
+        fi
+
+    - name: Verify Libraries
+      run: |
+        set -o pipefail
+        echo "=== Verifying Libraries in ios_app/MLCChat/dist/lib ==="
+        ls -lh ios_app/MLCChat/dist/lib/
+        
+        REQUIRED_LIBS=(
+          "libmlc_llm_static.a"
+          "libmodel_iphone.a"
+        )
+        
+        for lib in "${REQUIRED_LIBS[@]}"; do
+          if [ ! -f "ios_app/MLCChat/dist/lib/$lib" ]; then
+            echo "Error: Required library $lib is missing!"
+            # List what IS there to help debugging
+            ls -R ios_app/MLCChat/dist/lib/
+            exit 1
+          fi
+        done
+        echo "✓ All required libraries are present."
 
     - name: Build Xcode project (${{ matrix.name }})
       run: |
