@@ -43,10 +43,10 @@ jobs:
       - name: Install Python dependencies
         run: |
           python3 -m pip install -U pip wheel pytest
-          # Pin to a specific nightly that is known to work with Qwen2.5 tokenizer
+          # Use specific versions to avoid the RawStr bug in the latest nightlies
           python3 -m pip install --pre -U -f https://mlc.ai/wheels \
-            mlc-llm-nightly-cpu \
-            mlc-ai-nightly-cpu
+            "mlc-llm-nightly-cpu<=0.19.dev200" \
+            "mlc-ai-nightly-cpu<=0.19.dev200"
           # Verify mlc_llm is importable from the correct python
           python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
@@ -150,11 +150,12 @@ jobs:
 
           echo "Python: $(which python3) ($(python3 --version))"
 
-          # Truyền đường dẫn tuyệt đối vào --package-config
+          # Truyền đường dẫn tuyệt đối vào --package-config và thêm overrides để vô hiệu hóa CUDA opts
           python3 -m mlc_llm package \
           --package-config "$CONFIG_PATH" \
           --mlc-llm-source-dir "$MLC_LLM_SOURCE_DIR" \
           --output . \
+          --overrides "flashinfer=0;cublas_gemm=0;faster_transformer=0;cudagraph=0;cutlass=0" \
           2>&1 | tee package.log || {
           echo "=== PACKAGE FAILED ==="
           tail -n 50 package.log
