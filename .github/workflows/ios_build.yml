@@ -66,6 +66,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mlc-${{ matrix.platform }}-
 
+      - name: Cache Model Bundle
+        id: cache-bundle
+        uses: actions/cache@v4
+        with:
+          path: ios_app/MLCChat/bundle
+          key: ${{ runner.os }}-bundle-${{ hashFiles('ios_app/MLCChat/mlc-package-config.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bundle-
+
       - name: Clone MLC-LLM repository
         run: |
           if [ ! -d "mlc-llm" ]; then
@@ -140,6 +149,7 @@ jobs:
           df -h
 
       - name: Package models for iOS
+        if: steps.cache-bundle.outputs.cache-hit != 'true'
         run: |
           set -o pipefail
           export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
@@ -183,32 +193,27 @@ jobs:
             head -20 bundle/mlc-app-config.json
           fi
 
-          # In MLC-LLM 0.20+, the model is JIT-compiled at RUNTIME from the bundle directory.
-          # libmodel_iphone.a no longer exists as a build output.
-          # We create a dummy empty static lib to satisfy the Xcode linker (-lmodel_iphone).
-          echo "=== Ensuring libmodel_iphone.a exists for linker ==="
-          find "$GITHUB_WORKSPACE/ios_app/MLCChat" -name "*.a" 2>/dev/null | head -20
-
+      - name: Ensure libmodel_iphone.a exists
+        run: |
+          # In MLC-LLM 0.20+, model is JIT-compiled at runtime from bundle/.
+          # Create a dummy static lib to satisfy the Xcode linker (-lmodel_iphone).
           DIST_LIB="$GITHUB_WORKSPACE/ios_app/MLCChat/dist/lib"
           MODEL_LIB_DEST="$DIST_LIB/libmodel_iphone.a"
 
-          # Try to find actual compiled model lib first
-          REAL_LIB=$(find /tmp "$GITHUB_WORKSPACE" -name "libmodel_iphone.a" 2>/dev/null | head -1)
-          if [ -n "$REAL_LIB" ]; then
-            echo "Found real model lib: $REAL_LIB"
-            cp "$REAL_LIB" "$MODEL_LIB_DEST"
+          if [ -f "$MODEL_LIB_DEST" ]; then
+            echo "libmodel_iphone.a already exists, skipping"
+            ls -lh "$MODEL_LIB_DEST"
           else
-            echo "No libmodel_iphone.a found - creating dummy static lib (model JIT-compiled at runtime)"
-            # Write a valid C source file (not a comment - must be compilable)
+            echo "Creating dummy libmodel_iphone.a for linker..."
             printf 'void mlc_model_placeholder(void) {}\n' > /tmp/empty_model.c
             IPHONEOS_SDK=$(xcrun --sdk iphoneos --show-sdk-path)
             xcrun --sdk iphoneos clang -arch arm64 -isysroot "$IPHONEOS_SDK" \
               -miphoneos-version-min=16.0 \
               -c /tmp/empty_model.c -o /tmp/empty_model.o
             xcrun libtool -static /tmp/empty_model.o -o "$MODEL_LIB_DEST"
-            echo "Created dummy libmodel_iphone.a at $MODEL_LIB_DEST"
+            echo "Created: $MODEL_LIB_DEST"
+            ls -lh "$MODEL_LIB_DEST"
           fi
-          ls -lh "$MODEL_LIB_DEST"
 
       - name: Verify Libraries
         run: |
