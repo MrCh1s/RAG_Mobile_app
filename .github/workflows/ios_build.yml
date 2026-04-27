@@ -206,6 +206,7 @@ jobs:
           python3 -m mlc_llm compile "$MODEL_PATH" \
             --device metal \
             --host arm64-apple-ios \
+            --system-lib-prefix model_iphone \
             --output "$DIST_LIB/libmodel_iphone.tar"
             
           echo "Extracting objects and creating static library..."
