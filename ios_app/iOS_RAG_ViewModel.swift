@@ -22,7 +22,7 @@ class RAGViewModel: ObservableObject {
     init() {
         print("Đang khởi tạo MLCEngine trên thiết bị iOS...")
         // Tên model phải khớp với ID trong mlc-package-config.json
-        self.engine = MLCEngine("qwen2.5-1.5b-q4f16_1-v0.1")
+        self.engine = MLCEngine("qwen2.5-1.5b-instruct-q4f16_1")
     }
     
     // ==========================================
