@@ -123,10 +123,10 @@ if [ "$is_catalyst" = "true" ]; then
 else
   cmake_args+=(
     -DCMAKE_SYSTEM_NAME=iOS
-    -DCMAKE_SYSTEM_VERSION=14.0
+    -DCMAKE_SYSTEM_VERSION=16.0
     -DCMAKE_OSX_SYSROOT="$sysroot"
     -DCMAKE_OSX_ARCHITECTURES="$arch"
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0
   )
 fi
 
