@@ -12,6 +12,7 @@ struct MLCChatApp: App {
     @StateObject private var appState = AppState()
 
     init() {
+        NSLog("DEBUG: MLCChatApp started")
         UITableView.appearance().separatorStyle = .none
         UITableView.appearance().tableFooterView = UIView()
     }
