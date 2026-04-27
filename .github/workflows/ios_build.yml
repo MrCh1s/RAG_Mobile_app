@@ -170,8 +170,8 @@ jobs:
 
           # Set JIT policy to REDO to force recompilation but capture any errors early.
           # The RawStr error is triggered in tvm.tirx.build Metal codegen.
-          # We work around it by setting MLC_JIT_POLICY=OFF and using pre-compiled lib if available.
-          export MLC_JIT_POLICY=ON
+          # Set JIT policy to OFF to rely on static compilation for stability
+          export MLC_JIT_POLICY=OFF
 
           python3 -m mlc_llm package \
           --package-config "$CONFIG_PATH" \
@@ -193,27 +193,31 @@ jobs:
             head -20 bundle/mlc-app-config.json
           fi
 
-      - name: Ensure libmodel_iphone.a exists
+      - name: Compile real model library
         run: |
-          # In MLC-LLM 0.20+, model is JIT-compiled at runtime from bundle/.
-          # Create a dummy static lib to satisfy the Xcode linker (-lmodel_iphone).
           DIST_LIB="$GITHUB_WORKSPACE/ios_app/MLCChat/dist/lib"
           MODEL_LIB_DEST="$DIST_LIB/libmodel_iphone.a"
-
-          if [ -f "$MODEL_LIB_DEST" ]; then
-            echo "libmodel_iphone.a already exists, skipping"
-            ls -lh "$MODEL_LIB_DEST"
-          else
-            echo "Creating dummy libmodel_iphone.a for linker..."
-            printf 'void mlc_model_placeholder(void) {}\n' > /tmp/empty_model.c
-            IPHONEOS_SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-            xcrun --sdk iphoneos clang -arch arm64 -isysroot "$IPHONEOS_SDK" \
-              -miphoneos-version-min=16.0 \
-              -c /tmp/empty_model.c -o /tmp/empty_model.o
-            xcrun libtool -static /tmp/empty_model.o -o "$MODEL_LIB_DEST"
-            echo "Created: $MODEL_LIB_DEST"
-            ls -lh "$MODEL_LIB_DEST"
-          fi
+          
+          echo "Compiling model library for iOS..."
+          # The model path matches the model_id in mlc-package-config.json
+          # mlc_llm package should have downloaded/prepared the weights in bundle/
+          
+          # Use mlc_llm compile to create a real static library
+          # Note: We output a .tar as required by MLC for iOS objects
+          python3 -m mlc_llm compile \
+            "$GITHUB_WORKSPACE/ios_app/MLCChat/bundle/Qwen2.5-1.5B-Instruct-q4f16_1-MLC" \
+            --device metal \
+            --host arm64-apple-ios \
+            --output "$DIST_LIB/libmodel_iphone.tar"
+            
+          echo "Extracting objects and creating static library..."
+          mkdir -p /tmp/model_obj
+          tar -xf "$DIST_LIB/libmodel_iphone.tar" -C /tmp/model_obj
+          
+          xcrun --sdk iphoneos libtool -static /tmp/model_obj/*.o -o "$MODEL_LIB_DEST"
+          
+          echo "✓ Real libmodel_iphone.a created."
+          ls -lh "$MODEL_LIB_DEST"
 
       - name: Verify Libraries
         run: |

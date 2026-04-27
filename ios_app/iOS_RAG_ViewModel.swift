@@ -22,22 +22,27 @@ class RAGViewModel: ObservableObject {
     init() {
         print("Đang khởi tạo MLCEngine trên thiết bị iOS...")
         // Tên model phải khớp với ID trong mlc-package-config.json
-        self.engine = MLCEngine("qwen2.5-1.5b-instruct-q4f16_1")
+        self.engine = MLCEngine("Qwen2.5-1.5B-Instruct-q4f16_1-MLC")
     }
     
     // ==========================================
     // MODULE: Tìm kiếm Database (Vecto + SQLite)
     // ==========================================
     func searchDatabaseOffline(question: String) -> [String] {
-        // 1. Sinh Vector từ câu hỏi (Cần model CoreML tương ứng)
-        let questionVector = generateVectorFromCoreML(text: question)
-        if questionVector.isEmpty {
-            print("Cảnh báo: Không thể tạo vector cho câu hỏi.")
-            return []
+        // Giải pháp No-Mac: Tìm kiếm từ khóa trực tiếp từ câu hỏi
+        // (Trong tương lai, bạn có thể tách keyword quan trọng từ question)
+        let keywords = question.components(separatedBy: .whitespacesAndNewlines)
+            .filter { $0.count > 2 } // Lọc các từ ngắn
+        
+        var allResults: Set<String> = []
+        for word in keywords {
+            let matches = LocalDatabase.shared.searchNotes(keyword: word)
+            for match in matches {
+                allResults.insert(match)
+            }
         }
         
-        // 2. Tra cứu SQLite và tính toán độ tương đồng
-        return fetchFromSQLiteNative(vector: questionVector, threshold: 0.6)
+        return Array(allResults.prefix(3))
     }
     
     // ==========================================
@@ -118,28 +123,6 @@ class RAGViewModel: ObservableObject {
         return denom == 0 ? 0.0 : dotProduct / denom
     }
 
-    // ------- Logic kết nối Database thật -------
-    private func fetchFromSQLiteNative(vector: [Float], threshold: Float) -> [String] {
-        // Tạm thời dùng Keyword Search từ câu hỏi vì chưa có model Embedding CoreML
-        // Đây là giải pháp "No-Mac" hiệu quả nhất.
-        return LocalDatabase.shared.searchNotes(keyword: "") // keyword sẽ được xử lý ở searchDatabaseOffline
-    }
-    
-    func searchDatabaseOffline(question: String) -> [String] {
-        // Giải pháp No-Mac: Tìm kiếm từ khóa trực tiếp từ câu hỏi
-        // (Trong tương lai, bạn có thể tách keyword quan trọng từ question)
-        let keywords = question.components(separatedBy: .whitespacesAndNewlines)
-            .filter { $0.count > 2 } // Lọc các từ ngắn
-        
-        var allResults: Set<String> = []
-        for word in keywords {
-            let matches = LocalDatabase.shared.searchNotes(keyword: word)
-            for match in matches {
-                allResults.insert(match)
-            }
-        }
-        
-        return Array(allResults.prefix(3))
     }
     
     private func generateVectorFromCoreML(text: String) -> [Float] {
