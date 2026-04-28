@@ -35,10 +35,8 @@ final class ChatState: ObservableObject {
 
     @Published var displayMessages = [MessageData]()
     @Published var infoText = ""
-    @Published var displayName = ""
-    // this is a legacy UI option for upload image
-    // TODO(mlc-team) support new UI for image processing
     @Published var legacyUseImage = false
+    @Published var ramUsageText = ""
 
     private let modelChatStateLock = NSLock()
     private var modelChatState: ModelChatState = .ready
@@ -56,6 +54,15 @@ final class ChatState: ObservableObject {
     var modelID = ""
 
     init() {
+        startMemoryMonitoring()
+    }
+
+    private func startMemoryMonitoring() {
+        Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.ramUsageText = "RAM: \(MemoryUtil.getMemoryUsageString())"
+            }
+        }
     }
 
     var isInterruptible: Bool {

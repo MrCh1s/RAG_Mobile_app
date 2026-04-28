@@ -61,10 +61,17 @@ struct ChatView: View {
 
 private extension ChatView {
     var modelInfoView: some View {
-        Text(chatState.infoText)
-            .multilineTextAlignment(.center)
-            .opacity(0.5)
-            .listRowSeparator(.hidden)
+        VStack {
+            Text(chatState.infoText)
+            if !chatState.ramUsageText.isEmpty {
+                Text(chatState.ramUsageText)
+                    .font(.caption)
+                    .foregroundColor(.blue)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .opacity(0.5)
+        .listRowSeparator(.hidden)
     }
 
     var messagesView: some View {
