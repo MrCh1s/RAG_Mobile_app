@@ -5,6 +5,7 @@
 
 import Foundation
 import MLCSwift
+import os
 
 enum MessageRole {
     case user
@@ -52,6 +53,7 @@ final class ChatState: ObservableObject {
     private var modelLib = ""
     private var modelPath = ""
     var modelID = ""
+    var displayName = ""
 
     init() {
         startMemoryMonitoring()
