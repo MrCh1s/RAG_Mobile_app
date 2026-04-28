@@ -18,7 +18,7 @@ extension OSLog {
 }
 
 func debugLog(_ message: String, category: OSLog = .app) {
-    os_log("DEBUG: %{public}@", log: category, type: .debug, message)
+    os_log("DEBUG: %{public}@", log: category, message)
     NSLog("DEBUG: %@", message)
     print("DEBUG: \(message)")
 }
