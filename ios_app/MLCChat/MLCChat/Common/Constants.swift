@@ -1,5 +1,7 @@
 import Foundation
 import os.log
+import Darwin
+import MachO
 
 
 struct Constants {
@@ -26,8 +28,14 @@ func debugLog(_ message: String, category: OSLog = .app) {
 
 struct MemoryUtil {
     static func getMemoryUsage() -> UInt64 {
-        // Temporary bypass to fix build failing due to Mach API visibility
-        return 1024 * 1024 * 500 // 500 MB dummy for testing build
+        var taskInfo = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size) / mach_msg_type_number_t(MemoryLayout<integer_t>.size)
+        let result: kern_return_t = withUnsafeMutablePointer(to: &taskInfo) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        return result == KERN_SUCCESS ? UInt64(taskInfo.phys_footprint) : 0
     }
 
     static func getMemoryUsageString() -> String {
