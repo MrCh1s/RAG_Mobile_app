@@ -126,10 +126,39 @@ final class ChatState: ObservableObject {
     func requestGenerate(prompt: String) {
         assert(isChattable)
         switchToGenerating()
+        
+        // RAG Logic: Fetch context from local database
+        let notes = LocalDatabase.shared.fetchAllNotes()
+        // Limit to last 20 notes to stay within 2048 token budget (approx)
+        let relevantNotes = notes.prefix(20)
+        let context = relevantNotes.map { "- \($0.createdAt): \($0.content)" }.joined(separator: "\n")
+        
+        let systemPrompt = """
+        BẠN LÀ MỘT TRỢ LÝ SỔ TAY THÔNG MINH.
+        CHỈ SỬ DỤNG NHỮNG THÔNG TIN DƯỚI ĐÂY ĐỂ TRẢ LỜI CÂU HỎI CỦA NGƯỜI DÙNG:
+        
+        === NỘI DUNG SỔ TAY ===
+        \(context.isEmpty ? "(Sổ tay hiện đang trống)" : context)
+        ========================
+        
+        QUY TẮC BẮT BUỘC:
+        1. CHỈ trả lời dựa trên nội dung trong mục "NỘI DUNG SỔ TAY".
+        2. Nếu câu hỏi không có thông tin trong sổ tay, bạn PHẢI trả lời: "Xin lỗi, thông tin này không có trong sổ tay của bạn. Bạn có muốn ghi chú thêm không?"
+        3. TUYỆT ĐỐI không sử dụng kiến thức bên ngoài, không tìm kiếm web.
+        4. Trả lời bằng tiếng Việt, súc tích và chính xác.
+        """
+        
         appendMessage(role: .user, message: prompt)
         appendMessage(role: .assistant, message: "")
-
+        
         Task {
+            // Update/Verify system prompt in history
+            if self.historyMessages.isEmpty || self.historyMessages[0].role != .system {
+                self.historyMessages.insert(ChatCompletionMessage(role: .system, content: systemPrompt), at: 0)
+            } else {
+                self.historyMessages[0] = ChatCompletionMessage(role: .system, content: systemPrompt)
+            }
+            
             self.historyMessages.append(
                 ChatCompletionMessage(role: .user, content: prompt)
             )
