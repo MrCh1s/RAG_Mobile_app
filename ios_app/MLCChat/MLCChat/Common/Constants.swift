@@ -1,6 +1,7 @@
 import Foundation
 import os.log
 import Darwin
+import MachO
 
 struct Constants {
     static let prebuiltModelDir = "bundle"
