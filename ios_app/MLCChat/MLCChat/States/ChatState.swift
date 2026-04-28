@@ -129,9 +129,23 @@ final class ChatState: ObservableObject {
         
         // RAG Logic: Fetch context from local database
         let notes = LocalDatabase.shared.fetchAllNotes()
-        // Limit to last 20 notes to stay within 2048 token budget (approx)
-        let relevantNotes = notes.prefix(20)
-        let context = relevantNotes.map { "- \($0.createdAt): \($0.content)" }.joined(separator: "\n")
+        // Increase limit to 50 notes for better context
+        let relevantNotes = notes.prefix(50)
+        
+        // Format notes and ensure the total context isn't too huge to avoid OOM
+        var context = ""
+        var currentLength = 0
+        let maxContextChars = 4000 // Approximate safe limit for ~1000 tokens
+        
+        for note in relevantNotes {
+            let noteStr = "- \(note.createdAt): \(note.content)\n"
+            if currentLength + noteStr.count < maxContextChars {
+                context += noteStr
+                currentLength += noteStr.count
+            } else {
+                break
+            }
+        }
         
         let systemPrompt = """
         BẠN LÀ MỘT TRỢ LÝ SỔ TAY THÔNG MINH.
