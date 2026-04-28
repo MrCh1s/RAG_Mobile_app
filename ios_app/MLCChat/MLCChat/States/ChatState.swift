@@ -339,6 +339,15 @@ private extension ChatState {
             do {
                 let files = try fileManager.contentsOfDirectory(atPath: modelPath)
                 debugLog("Files found (\(files.count)): \(files.joined(separator: ", "))")
+                
+                // Read and log mlc-chat-config.json
+                let configPath = (modelPath as NSString).appendingPathComponent("mlc-chat-config.json")
+                if fileManager.fileExists(atPath: configPath) {
+                    let configContent = try String(contentsOfFile: configPath, encoding: .utf8)
+                    debugLog("mlc-chat-config.json content: \(configContent)")
+                } else {
+                    debugLog("mlc-chat-config.json NOT FOUND at \(configPath)")
+                }
             } catch {
                 debugLog("Error listing files at modelPath: \(error.localizedDescription)")
             }
