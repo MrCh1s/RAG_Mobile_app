@@ -84,7 +84,21 @@ struct NoteEditView: View {
             Divider()
             
             List {
-                Section(header: Text("Danh sách ghi chú (\(notes.count))")) {
+                Section(header: 
+                    HStack {
+                        Text("Danh sách ghi chú (\(notes.count))")
+                        Spacer()
+                        if !notes.isEmpty {
+                            Button(action: {
+                                isConfirmingDeleteAll = true
+                            }) {
+                                Text("Xóa tất cả")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                ) {
                     ForEach(notes) { note in
                         VStack(alignment: .leading) {
                             Text(note.content)
@@ -100,6 +114,23 @@ struct NoteEditView: View {
         }
         .navigationTitle("Sổ tay AI")
         .onAppear(perform: loadNotes)
+        .alert("Xác nhận xóa", isPresented: $isConfirmingDeleteAll) {
+            Button("Hủy", role: .cancel) { }
+            Button("Xóa hết", role: .destructive) {
+                deleteAllNotes()
+            }
+        } message: {
+            Text("Bạn có chắc chắn muốn xóa toàn bộ ghi chú không? Hành động này không thể hoàn tác.")
+        }
+    }
+    
+    @State private var isConfirmingDeleteAll = false
+    
+    private func deleteAllNotes() {
+        for note in notes {
+            LocalDatabase.shared.deleteNote(id: note.id)
+        }
+        loadNotes()
     }
     
     private func loadNotes() {
