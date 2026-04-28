@@ -74,6 +74,7 @@ final class ModelState: ObservableObject, Identifiable {
     }
 
     func startChat(chatState: ChatState) {
+        debugLog("ModelState.startChat called for \(modelConfig.modelID!)")
         chatState.requestReloadChat(
             modelID: modelConfig.modelID!,
             modelLib: modelConfig.modelLib!,

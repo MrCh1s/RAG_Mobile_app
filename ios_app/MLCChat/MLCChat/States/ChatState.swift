@@ -106,6 +106,7 @@ final class ChatState: ObservableObject {
     }
 
     func requestReloadChat(modelID: String, modelLib: String, modelPath: String, estimatedVRAMReq: Int, displayName: String) {
+        debugLog("requestReloadChat called for \(modelID)")
         if (isCurrentModel(modelID: modelID)) {
             return
         }
@@ -322,15 +323,15 @@ private extension ChatState {
                 self.appendMessage(role: .assistant, message: "[System] Initalize...")
             }
 
-            NSLog("DEBUG: Starting mainReloadChat for modelID: %@", modelID)
-            NSLog("DEBUG: modelPath: %@", modelPath)
-            NSLog("DEBUG: modelLib: %@", modelLib)
+            debugLog("Starting mainReloadChat for modelID: \(modelID)")
+            debugLog("modelPath: \(modelPath)")
+            debugLog("modelLib: \(modelLib)")
 
             await engine.unload()
-            NSLog("DEBUG: Engine unloaded")
+            debugLog("Engine unloaded")
 
             let vRAM = os_proc_available_memory()
-            NSLog("DEBUG: Available memory: %lld bytes", vRAM)
+            debugLog("Available memory: \(vRAM) bytes")
             if (vRAM < estimatedVRAMReq) {
                 let requiredMemory = String (
                     format: "%.1fMB", Double(estimatedVRAMReq) / Double(1 << 20)
@@ -339,7 +340,7 @@ private extension ChatState {
                     "Sorry, the system cannot provide \(requiredMemory) VRAM as requested to the app, " +
                     "so we cannot initialize this model on this device."
                 )
-                NSLog("DEBUG: Insufficient memory. Required: %lld", estimatedVRAMReq)
+                debugLog("Insufficient memory. Required: \(estimatedVRAMReq)")
                 DispatchQueue.main.sync {
                     self.displayMessages.append(MessageData(role: MessageRole.assistant, message: errorMessage))
                     self.switchToFailed()
@@ -347,20 +348,20 @@ private extension ChatState {
                 return
             }
 
-            NSLog("DEBUG: Calling engine.reload...")
+            debugLog("Calling engine.reload...")
             await engine.reload(
                 modelPath: modelPath, modelLib: modelLib
             )
-            NSLog("DEBUG: engine.reload completed successfully")
+            debugLog("engine.reload completed successfully")
 
             // run a simple prompt with empty content to warm up system prompt
             // helps to start things before user start typing
-            NSLog("DEBUG: Warming up system prompt...")
+            debugLog("Warming up system prompt...")
             for await _ in await engine.chat.completions.create(
                 messages: [ChatCompletionMessage(role: .user, content: "")],
                 max_tokens: 1
             ) {}
-            NSLog("DEBUG: Warm up completed")
+            debugLog("Warm up completed")
 
             // TODO(mlc-team) run a system message prefill
             DispatchQueue.main.async {
