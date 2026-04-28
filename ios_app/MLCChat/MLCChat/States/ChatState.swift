@@ -332,6 +332,17 @@ private extension ChatState {
 
             let vRAM = os_proc_available_memory()
             debugLog("Available memory: \(vRAM) bytes")
+            
+            // Log file listing for debugging
+            debugLog("Checking files at modelPath: \(modelPath)")
+            let fileManager = FileManager.default
+            do {
+                let files = try fileManager.contentsOfDirectory(atPath: modelPath)
+                debugLog("Files found (\(files.count)): \(files.joined(separator: ", "))")
+            } catch {
+                debugLog("Error listing files at modelPath: \(error.localizedDescription)")
+            }
+
             if (vRAM < estimatedVRAMReq) {
                 let requiredMemory = String (
                     format: "%.1fMB", Double(estimatedVRAMReq) / Double(1 << 20)
