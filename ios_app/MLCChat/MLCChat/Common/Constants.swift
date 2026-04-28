@@ -1,5 +1,6 @@
 import Foundation
 import os.log
+import Darwin
 
 struct Constants {
     static let prebuiltModelDir = "bundle"
