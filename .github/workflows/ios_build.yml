@@ -192,6 +192,28 @@ jobs:
             echo "mlc-app-config.json generated successfully"
             head -20 bundle/mlc-app-config.json
           fi
+          echo "=== Patching mlc-chat-config.json ==="
+          python3 <<EOF
+import json, os
+path = 'bundle/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/mlc-chat-config.json'
+if os.path.exists(path):
+    with open(path, 'r') as f:
+        config = json.load(f)
+    config['context_window_size'] = 2048
+    config['prefill_chunk_size'] = 128
+    config['max_batch_size'] = 1
+    config['model_lib'] = 'model_iphone'
+    # Ensure nested model_config also updated if exists
+    if 'model_config' in config:
+        config['model_config']['context_window_size'] = 2048
+        config['model_config']['prefill_chunk_size'] = 128
+        config['model_config']['max_batch_size'] = 1
+    with open(path, 'w') as f:
+        json.dump(config, f, indent=4)
+    print('✓ Patched config successfully')
+else:
+    print('! Warning: config file not found to patch at', path)
+EOF
 
       - name: Compile real model library
         run: |
