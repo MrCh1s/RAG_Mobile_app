@@ -9,7 +9,7 @@ function help {
     echo -e "  -h,  --help                          Prints this help\n"
 }
 
-MLC_LLM_SOURCE_DIR="${MLC_LLM_SOURCE_DIR:-$(pwd)/../mlc-llm}"
+MLC_LLM_SOURCE_DIR="${MLC_LLM_SOURCE_DIR:-$(pwd)/../../mlc-llm}"
 is_simulator="false"
 is_catalyst="false"
 arch="arm64"
