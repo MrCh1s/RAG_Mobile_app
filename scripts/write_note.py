@@ -20,13 +20,13 @@ def save_note_with_metadata(db_cursor, folder_name, note_id, context_user):
         ''', (folder_name, note_id, chunk, json.dumps(vector)))
     
     db_cursor.connection.commit()
-    print(f"✅ Đã lưu {len(chunks)} phân đoạn chữ nhỏ vào Database (Thư mục: [{folder_name}] - Tệp: {note_id})!")
+    print(f" Đã lưu {len(chunks)} phân đoạn chữ nhỏ vào Database (Thư mục: [{folder_name}] - Tệp: {note_id})!")
 
 if __name__ == "__main__":
     import sys
     import os
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-    from sqlite_notes import NoteManager
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    from backend.sqlite_notes import NoteManager  # noqa: E402
     
     # Khởi tạo DB
     db = NoteManager()

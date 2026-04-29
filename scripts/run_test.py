@@ -5,9 +5,9 @@ import math
 from mlc_llm import MLCEngine
 from langchain_ollama import OllamaEmbeddings
 
-# Thêm đường dẫn tới thư mục backend
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
-from sqlite_notes import NoteManager
+# Thêm đường dẫn gốc của dự án
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from backend.sqlite_notes import NoteManager  # noqa: E402
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
