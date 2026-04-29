@@ -98,7 +98,7 @@ jobs:
       - name: Build MLC-LLM iOS Libraries (${{ matrix.name }})
         run: |
           set -o pipefail
-          cd ios_app
+          cd apps/ios_app
           echo "Building for ${{ matrix.platform }}..."
 
           if [ "${{ matrix.platform }}" = "iphonesimulator" ]; then
