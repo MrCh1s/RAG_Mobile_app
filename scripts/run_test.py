@@ -1,9 +1,15 @@
 import sys
+import os
 import json
 import math
 from mlc_llm import MLCEngine
 from langchain_ollama import OllamaEmbeddings
+
+# Thêm đường dẫn tới thư mục backend
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
 from sqlite_notes import NoteManager
+
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 # Hàm tính độ tương đồng bằng Cosine
 def cosine_similarity(v1, v2):
@@ -21,8 +27,8 @@ embeddings = OllamaEmbeddings(
 )
 
 engine = MLCEngine(
-    model="dist/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/",
-    model_lib="dist/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll",
+    model=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"),
+    model_lib=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll"),
     mode="interactive",
     device="cpu",
 )

@@ -1,9 +1,12 @@
 import sqlite3
 import json
 import datetime
+import os
+
+DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'notes.db'))
 
 class NoteManager:
-    def __init__(self, db_path="notes.db"):
+    def __init__(self, db_path=DB_PATH):
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
         self.create_table()

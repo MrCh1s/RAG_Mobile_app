@@ -1,11 +1,14 @@
 import sys
+import os
 from mlc_llm import MLCEngine
 
 print("============== QWEN 2.5 (1.5B) - MLC LLM ==============")
 
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
 engine = MLCEngine(
-    model="dist/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/",
-    model_lib="dist/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll",
+    model=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"),
+    model_lib=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll"),
     mode="interactive",
     device="cpu", # Hệ thống sử dụng CPU
 )

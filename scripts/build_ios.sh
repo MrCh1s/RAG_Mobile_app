@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 WORKSPACE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IOS_APP_DIR="${WORKSPACE_ROOT}/ios_app"
+IOS_APP_DIR="${WORKSPACE_ROOT}/apps/ios_app"
 MLC_CHAT_DIR="${IOS_APP_DIR}/MLCChat"
 MODEL_NAME="Qwen2.5-1.5B-Instruct"
 PLATFORM="${1:-iphoneos}"  # iphoneos or iphonesimulator

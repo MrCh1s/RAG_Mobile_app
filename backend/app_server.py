@@ -8,8 +8,13 @@ import uvicorn
 from mlc_llm import MLCEngine
 from langchain_ollama import OllamaEmbeddings
 from sqlite_notes import NoteManager
+import os
 
 app = FastAPI()
+
+# Tính đường dẫn tuyệt đối thư mục gốc của dự án
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
 
 # Hàm tính độ tương đồng bằng Cosine
 def cosine_similarity(v1, v2):
@@ -23,8 +28,8 @@ print("\n[Máy Chủ] Đang khởi động lõi AI ngầm trên PC...")
 embeddings = OllamaEmbeddings(model="bge-m3", base_url="http://localhost:11434")
 
 engine = MLCEngine(
-    model="dist/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/",
-    model_lib="dist/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll",
+    model=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"),
+    model_lib=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll"),
     mode="interactive",
     device="cpu", # Máy đang kẹt CPU. Sau này nướng lại file DLL thì thay = "vulkan"
 )

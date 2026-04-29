@@ -1,9 +1,8 @@
 # Ignore các file nặng của AI
-dist/
-mlc-llm/
+models/mlc_models/
+models/hf_models/
 *.whl
 *.db
-Qwen2.5-1.5B-Instruct/
 
 # Python
 __pycache__/
