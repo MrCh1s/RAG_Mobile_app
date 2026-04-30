@@ -133,8 +133,9 @@ fi
 cmake "$MLC_LLM_SOURCE_DIR" "${cmake_args[@]}"
 
 
-cmake --build . --config release --target mlc_llm_static -j
-cmake --build . --target install --config release -j
+export CARGO_BUILD_JOBS=2
+cmake --build . --config release --target mlc_llm_static -j3
+cmake --build . --target install --config release -j3
 cd ..
 
 rm -rf $MLC_LLM_SOURCE_DIR/ios/MLCSwift/tvm_home
