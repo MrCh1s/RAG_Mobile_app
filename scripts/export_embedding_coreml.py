@@ -20,7 +20,8 @@ def export_to_coreml():
     config = AutoConfig.from_pretrained(model_name)
     config.torchscript = True
     
-    model = AutoModel.from_pretrained(model_name, config=config)
+    # Thêm attn_implementation="eager" để ép model dùng cơ chế attention cũ, tránh lỗi khi JIT trace SDPA
+    model = AutoModel.from_pretrained(model_name, config=config, attn_implementation="eager")
     model.eval()
 
     # Tạo một Wrapper class để chỉ trả về tensor duy nhất (last_hidden_state hoặc pooler_output)
