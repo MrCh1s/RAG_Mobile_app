@@ -6,11 +6,16 @@ from transformers import AutoModel, AutoTokenizer, AutoConfig
 # Lỗi này xảy ra do logic kiểm tra shape trong sdpa_mask không tương thích với bộ dò (tracer) của PyTorch
 try:
     import transformers.masking_utils
-    def patched_sdpa_mask(mask, dtype, target_len=None, *args, **kwargs):
-        if mask.dim() == 2:
-            # Tự mở rộng mask từ (batch, seq_len) sang (batch, 1, 1, seq_len)
-            return mask.unsqueeze(1).unsqueeze(2).to(dtype)
-        return mask.to(dtype)
+    def patched_sdpa_mask(*args, **kwargs):
+        # Lấy mask và dtype từ positional hoặc keyword arguments để đảm bảo không lỗi signature
+        mask = kwargs.get("mask", args[0] if len(args) > 0 else None)
+        dtype = kwargs.get("dtype", args[1] if len(args) > 1 else torch.float32)
+        if mask is not None:
+            if mask.dim() == 2:
+                # Tự mở rộng mask từ (batch, seq_len) sang (batch, 1, 1, seq_len)
+                mask = mask.unsqueeze(1).unsqueeze(2)
+            return mask.to(dtype)
+        return None
     transformers.masking_utils.sdpa_mask = patched_sdpa_mask
     print("✓ Đã áp dụng bản vá (patch) cho transformers.masking_utils")
 except Exception as e:
