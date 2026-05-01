@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CoreML
 import MLCChat // Thư viện lõi của MLC-LLM dành cho iOS
 
 /**
@@ -14,6 +15,9 @@ class RAGViewModel: ObservableObject {
     // Core Engine của MLC-LLM
     private var engine: MLCEngine?
     
+    // Mô hình CoreML sinh Vector
+    private var embeddingModel: MLModel?
+    
     // Đường dẫn tới file database trong Bundle
     private var dbPath: String {
         return Bundle.main.path(forResource: "notes", ofType: "db") ?? ""
@@ -24,86 +28,31 @@ class RAGViewModel: ObservableObject {
         // Tên model phải khớp với ID trong mlc-package-config.json
         self.engine = MLCEngine("Qwen2.5-1.5B-Instruct-q4f16_1-MLC")
         NSLog("DEBUG: MLCEngine object created")
+        
+        // Khởi tạo Embedding Model offline
+        loadEmbeddingModel()
     }
     
-    // ==========================================
-    // MODULE: Tìm kiếm Database (Vecto + SQLite)
-    // ==========================================
-    func searchDatabaseOffline(question: String) -> [String] {
-        // Giải pháp No-Mac: Tìm kiếm từ khóa trực tiếp từ câu hỏi
-        // (Trong tương lai, bạn có thể tách keyword quan trọng từ question)
-        let keywords = question.components(separatedBy: .whitespacesAndNewlines)
-            .filter { $0.count > 2 } // Lọc các từ ngắn
-        
-        var allResults: Set<String> = []
-        for word in keywords {
-            let matches = LocalDatabase.shared.searchNotes(keyword: word)
-            for match in matches {
-                allResults.insert(match)
-            }
+    private func loadEmbeddingModel() {
+        // Tải mô hình Vietnamese_SBERT_CoreML đã convert từ Python script
+        // Tìm trong thư mục con "bundle" trước (theo cấu trúc CI build mới), nếu không có thì tìm ở root
+        var modelURL = Bundle.main.url(forResource: "Vietnamese_SBERT_CoreML", withExtension: "mlmodelc", subdirectory: "bundle")
+        if modelURL == nil {
+            modelURL = Bundle.main.url(forResource: "Vietnamese_SBERT_CoreML", withExtension: "mlmodelc")
         }
         
-        return Array(allResults.prefix(3))
-    }
-    
-    // ==========================================
-    // MODULE: Vận hành LLM Chat
-    // ==========================================
-    func sendMessage(userInput: String) async {
-        await updateChatLog("\nNhập câu hỏi: \(userInput)", isTyping: true)
-        
-        // 1. Quét Database lấy ngữ cảnh
-        let ragContexts = searchDatabaseOffline(question: userInput)
-        
-        // 2. Kiểm tra nếu không có dữ liệu (Chặn Hallucination)
-        if ragContexts.isEmpty {
-            await updateChatLog("\n=> Hệ thống: Không tìm thấy dữ liệu liên quan trong Sổ tay.\n", isTyping: false)
+        guard let finalModelURL = modelURL else {
+            NSLog("Cảnh báo: Không tìm thấy file Vietnamese_SBERT_CoreML.mlmodelc trong Xcode Bundle.")
             return
         }
-        
-        // 3. Xây dựng Prompt từ ngữ cảnh đã tìm thấy
-        let contextText = ragContexts.map { "- \($0)" }.joined(separator: "\n")
-        let finalPrompt = "Đây là TÀI LIỆU SỔ TAY:\n\(contextText)\n\nCâu hỏi: \(userInput)"
-        
-        await updateChatLog("\n Qwen2.5: ", isTyping: true)
-        
-        // 4. Sinh phản hồi từ LLM
-        if let engine = engine {
-            do {
-                let stream = try await engine.chat.completions.create(
-                    messages: [
-                        [.role: "system", .content: "Bạn là Trợ lý AI cá nhân. Bạn CHỈ ĐƯỢC phép dùng dữ kiện trong phần TÀI LIỆU SỔ TAY. Nếu thông tin không có, hãy trả lời là \"không tìm thấy\"."],
-                        [.role: "user", .content: finalPrompt]
-                    ]
-                )
-                
-                for try await chunk in stream {
-                    if let content = chunk.choices.first?.delta.content {
-                        await updateChatLog(content, append: true)
-                    }
-                }
-            } catch {
-                print("Lỗi Generation: \(error)")
-                await updateChatLog("\n[Lỗi: \(error.localizedDescription)]")
-            }
+        do {
+            self.embeddingModel = try MLModel(contentsOf: finalModelURL)
+            NSLog("DEBUG: Đã tải thành công mô hình sinh Vector Tiếng Việt Offline.")
+        } catch {
+            NSLog("Lỗi khi tải CoreML: \(error)")
         }
-        
-        await updateChatLog("\n", isTyping: false)
     }
     
-    // Helper để cập nhật UI từ Background Thread
-    @MainActor
-    private func updateChatLog(_ text: String, isTyping: Bool? = nil, append: Bool = true) {
-        if append {
-            self.chatLog += text
-        } else {
-            self.chatLog = text
-        }
-        if let typing = isTyping {
-            self.isTyping = typing
-        }
-    }
-
     // ==========================================
     // MODULE: Phép tính Vector (Cosine Similarity)
     // ==========================================
@@ -124,9 +73,141 @@ class RAGViewModel: ObservableObject {
         return denom == 0 ? 0.0 : dotProduct / denom
     }
 
+    // ==========================================
+    // MODULE: Mã hóa Câu hỏi thành Vector Offline
+    // ==========================================
+    private func generateVectorFromCoreML(text: String) -> [Float] {
+        guard let model = embeddingModel else {
+            print("Chưa có model embedding.")
+            return []
+        }
+        
+        // LƯU Ý CHO SẾP: 
+        // 1. Phải dùng thư viện swift-transformers của HuggingFace để mã hóa text -> input_ids.
+        // 2. Dưới đây là khung chuẩn bị sẵn để gọi model.
+        /* 
+        do {
+            // Bước 1: Gọi thư viện Tokenizer
+            let tokenizer = try Tokenizer(modelName: "keepitreal/vietnamese-sbert")
+            let tokens = tokenizer.encode(text: text)
+            
+            // Bước 2: Đưa Tensor vào MLModel
+            let featureProvider = try MLDictionaryFeatureProvider(dictionary: [
+                "input_ids": tokens.inputIds,
+                "attention_mask": tokens.attentionMask
+            ])
+            let prediction = try model.prediction(from: featureProvider)
+            
+            // Bước 3: Lấy tensor đầu ra và tính Mean Pooling thành mảng [Float]
+            if let output = prediction.featureValue(for: "last_hidden_state")?.multiArrayValue {
+                // Tùy chỉnh giải mã MLMultiArray thành [Float] ở đây
+                return [] 
+            }
+        } catch {
+            print("Lỗi sinh Vector: \(error)")
+        }
+        */
+        
+        return [] 
+    }
+
+    // ==========================================
+    // MODULE: Tìm kiếm Database (Vecto + SQLite)
+    // ==========================================
+    func searchDatabaseOffline(question: String) -> [String] {
+        // 1. Sinh vector từ câu hỏi của sếp
+        let questionVector = generateVectorFromCoreML(text: question)
+        
+        // (Tạm thời Fallback về keyword search nếu Vector chưa cài đặt xong bên Xcode)
+        if questionVector.isEmpty {
+            let keywords = question.components(separatedBy: .whitespacesAndNewlines).filter { $0.count > 2 }
+            var allResults: Set<String> = []
+            for word in keywords {
+                let matches = LocalDatabase.shared.searchNotes(keyword: word)
+                for match in matches {
+                    allResults.insert(match)
+                }
+            }
+            return Array(allResults.prefix(3))
+        }
+        
+        // 2. TÌM KIẾM THEO NGỮ NGHĨA THỰC SỰ
+        /*
+        let allNotes = LocalDatabase.shared.getAllNotesWithEmbeddings() // Cần viết thêm hàm này trong LocalDatabase
+        var results: [(content: String, score: Float)] = []
+        
+        for note in allNotes {
+            guard let noteVector = note.embedding else { continue }
+            let score = cosineSimilarity(questionVector, noteVector)
+            results.append((content: note.chunkContext, score: score))
+        }
+        
+        // Lọc mức điểm an toàn > 0.6 và lấy top 3
+        let topResults = results.filter { $0.score > 0.6 }
+                                .sorted { $0.score > $1.score }
+                                .prefix(3)
+                                .map { $0.content }
+                                
+        return Array(topResults)
+        */
+        return []
     }
     
-    private func generateVectorFromCoreML(text: String) -> [Float] {
-        return [] 
+    // ==========================================
+    // MODULE: Vận hành LLM Chat (RAG Chatbot)
+    // ==========================================
+    func sendMessage(userInput: String) async {
+        await updateChatLog("\nNhập câu hỏi: \(userInput)", isTyping: true)
+        
+        // 1. Quét Database lấy ngữ cảnh
+        let ragContexts = searchDatabaseOffline(question: userInput)
+        
+        // 2. Chặn Hallucination
+        if ragContexts.isEmpty {
+            await updateChatLog("\n=> Hệ thống: Không tìm thấy mảnh dữ liệu trong Sổ tay. Từ chối trả lời.\n", isTyping: false)
+            return
+        }
+        
+        // 3. Xây dựng Prompt
+        let contextText = ragContexts.map { "- \($0)" }.joined(separator: "\n")
+        let finalPrompt = "TÀI LIỆU SỔ TAY:\n\(contextText)\n\nLệnh của sếp: \(userInput)"
+        
+        await updateChatLog("\n Qwen2.5: ", isTyping: true)
+        
+        // 4. Sinh phản hồi
+        if let engine = engine {
+            do {
+                let stream = try await engine.chat.completions.create(
+                    messages: [
+                        [.role: "system", .content: "Bạn là Trợ lý AI cá nhân. Bạn CHỈ ĐƯỢC phép dùng dữ kiện trong phần TÀI LIỆU SỔ TAY để trả lời cực kỳ ngắn gọn."],
+                        [.role: "user", .content: finalPrompt]
+                    ]
+                )
+                
+                for try await chunk in stream {
+                    if let content = chunk.choices.first?.delta.content {
+                        await updateChatLog(content, append: true)
+                    }
+                }
+            } catch {
+                print("Lỗi Generation: \(error)")
+                await updateChatLog("\n[Lỗi: \(error.localizedDescription)]")
+            }
+        }
+        
+        await updateChatLog("\n", isTyping: false)
+    }
+    
+    // Helper để cập nhật UI
+    @MainActor
+    private func updateChatLog(_ text: String, isTyping: Bool? = nil, append: Bool = true) {
+        if append {
+            self.chatLog += text
+        } else {
+            self.chatLog = text
+        }
+        if let typing = isTyping {
+            self.isTyping = typing
+        }
     }
 }

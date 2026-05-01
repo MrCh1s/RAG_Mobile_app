@@ -270,6 +270,21 @@ jobs:
           echo "✓ All required libraries are present."
           echo "✓ Model bundle exists."
 
+      - name: Generate and Compile CoreML Embedding Model
+        run: |
+          set -o pipefail
+          echo "Installing dependencies for CoreML..."
+          python3 -m pip install coremltools transformers torch
+          
+          echo "Running export script..."
+          python3 scripts/export_embedding_coreml.py
+          
+          echo "Compiling .mlpackage to .mlmodelc..."
+          xcrun coremlcompiler compile Vietnamese_SBERT_CoreML.mlpackage apps/ios_app/MLCChat/bundle/
+          
+          echo "Verify compiled model:"
+          ls -lah apps/ios_app/MLCChat/bundle/Vietnamese_SBERT_CoreML.mlmodelc
+
       - name: Build Xcode project (${{ matrix.name }})
         run: |
           set -o pipefail
