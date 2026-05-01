@@ -14,8 +14,13 @@ def export_to_coreml():
 
     print(f"1. Đang tải Tokenizer và Model: {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    # Add torchscript=True to configure the model for JIT tracing (disables SDPA, return_dict, etc.)
-    model = AutoModel.from_pretrained(model_name, torchscript=True)
+    
+    # Sử dụng AutoConfig để thiết lập torchscript=True (một số phiên bản transformers không hỗ trợ truyền trực tiếp vào AutoModel)
+    from transformers import AutoConfig
+    config = AutoConfig.from_pretrained(model_name)
+    config.torchscript = True
+    
+    model = AutoModel.from_pretrained(model_name, config=config)
     model.eval()
 
     # Tạo một Wrapper class để chỉ trả về tensor duy nhất (last_hidden_state hoặc pooler_output)
