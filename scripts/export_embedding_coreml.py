@@ -14,7 +14,8 @@ def export_to_coreml():
 
     print(f"1. Đang tải Tokenizer và Model: {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModel.from_pretrained(model_name)
+    # Add torchscript=True to configure the model for JIT tracing (disables SDPA, return_dict, etc.)
+    model = AutoModel.from_pretrained(model_name, torchscript=True)
     model.eval()
 
     # Tạo một Wrapper class để chỉ trả về tensor duy nhất (last_hidden_state hoặc pooler_output)
@@ -26,8 +27,8 @@ def export_to_coreml():
             
         def forward(self, input_ids, attention_mask):
             outputs = self.base_model(input_ids=input_ids, attention_mask=attention_mask)
-            # Trả về last_hidden_state để Swift tính Mean Pooling (phổ biến nhất cho Sentence Transformers)
-            return outputs.last_hidden_state
+            # Trả về last_hidden_state. Khi torchscript=True, output là tuple, phần tử 0 là last_hidden_state
+            return outputs[0]
 
     wrapped_model = SBERTCoreMLWrapper(model)
     wrapped_model.eval()
