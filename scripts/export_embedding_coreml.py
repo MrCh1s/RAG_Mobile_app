@@ -1,6 +1,20 @@
 import os
 import torch
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel, AutoTokenizer, AutoConfig
+
+# Monkeypatch để sửa lỗi "IndexError: tuple index out of range" trong transformers 4.57+ khi JIT Trace
+# Lỗi này xảy ra do logic kiểm tra shape trong sdpa_mask không tương thích với bộ dò (tracer) của PyTorch
+try:
+    import transformers.masking_utils
+    def patched_sdpa_mask(mask, dtype, target_len=None):
+        if mask.dim() == 2:
+            # Tự mở rộng mask từ (batch, seq_len) sang (batch, 1, 1, seq_len)
+            return mask.unsqueeze(1).unsqueeze(2).to(dtype)
+        return mask.to(dtype)
+    transformers.masking_utils.sdpa_mask = patched_sdpa_mask
+    print("✓ Đã áp dụng bản vá (patch) cho transformers.masking_utils")
+except Exception as e:
+    print(f"! Không thể áp dụng bản vá masking: {e}")
 
 def export_to_coreml():
     try:
@@ -15,8 +29,7 @@ def export_to_coreml():
     print(f"1. Đang tải Tokenizer và Model: {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    # Sử dụng AutoConfig để thiết lập torchscript=True (một số phiên bản transformers không hỗ trợ truyền trực tiếp vào AutoModel)
-    from transformers import AutoConfig
+    # Sử dụng AutoConfig để thiết lập torchscript=True
     config = AutoConfig.from_pretrained(model_name)
     config.torchscript = True
     
