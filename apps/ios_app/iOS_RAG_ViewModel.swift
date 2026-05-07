@@ -81,33 +81,6 @@ class RAGViewModel: ObservableObject {
             print("Chưa có model embedding.")
             return []
         }
-        
-        // LƯU Ý CHO SẾP: 
-        // 1. Phải dùng thư viện swift-transformers của HuggingFace để mã hóa text -> input_ids.
-        // 2. Dưới đây là khung chuẩn bị sẵn để gọi model.
-        /* 
-        do {
-            // Bước 1: Gọi thư viện Tokenizer
-            let tokenizer = try Tokenizer(modelName: "keepitreal/vietnamese-sbert")
-            let tokens = tokenizer.encode(text: text)
-            
-            // Bước 2: Đưa Tensor vào MLModel
-            let featureProvider = try MLDictionaryFeatureProvider(dictionary: [
-                "input_ids": tokens.inputIds,
-                "attention_mask": tokens.attentionMask
-            ])
-            let prediction = try model.prediction(from: featureProvider)
-            
-            // Bước 3: Lấy tensor đầu ra và tính Mean Pooling thành mảng [Float]
-            if let output = prediction.featureValue(for: "last_hidden_state")?.multiArrayValue {
-                // Tùy chỉnh giải mã MLMultiArray thành [Float] ở đây
-                return [] 
-            }
-        } catch {
-            print("Lỗi sinh Vector: \(error)")
-        }
-        */
-        
         return [] 
     }
 
@@ -179,9 +152,11 @@ class RAGViewModel: ObservableObject {
             do {
                 let stream = try await engine.chat.completions.create(
                     messages: [
-                        [.role: "system", .content: "Bạn là Trợ lý AI cá nhân. Bạn CHỈ ĐƯỢC phép dùng dữ kiện trong phần TÀI LIỆU SỔ TAY để trả lời cực kỳ ngắn gọn."],
+                        [.role: "system", .content: "Bạn là Trợ lý AI cá nhân chuyên tra cứu sổ tay. Nhiệm vụ của bạn là trả lời câu hỏi dựa TRỰC TIẾP và DUY NHẤT vào tài liệu được cung cấp. Trả lời cực kỳ ngắn gọn (1-2 câu), không lặp lại thông tin. Nếu không có thông tin, hãy từ chối trả lời."],
                         [.role: "user", .content: finalPrompt]
-                    ]
+                    ],
+                    repetition_penalty: 1.15,
+                    max_tokens: 128
                 )
                 
                 for try await chunk in stream {

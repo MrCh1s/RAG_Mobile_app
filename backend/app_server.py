@@ -154,7 +154,7 @@ def chat_stream(q: str):
         final_prompt = f"TÀI LIỆU SỔ TAY:\n{tai_lieu}\n\nLệnh của sếp: {q}"
         
         history = [
-            {"role": "system", "content": "Bạn là Trợ lý AI cá nhân. Bạn CHỈ ĐƯỢC phép dùng dữ kiện trong phần TÀI LIỆU SỔ TAY để trả lời cực kỳ ngắn gọn."},
+            {"role": "system", "content": "Bạn là Trợ lý AI cá nhân chuyên tra cứu sổ tay. Nhiệm vụ của bạn là trả lời câu hỏi dựa TRỰC TIẾP và DUY NHẤT vào tài liệu được cung cấp. Trả lời cực kỳ ngắn gọn (1-2 câu), không lặp lại thông tin. Nếu không có thông tin, hãy từ chối trả lời."},
             {"role": "user", "content": final_prompt}
         ]
         
@@ -168,6 +168,8 @@ def chat_stream(q: str):
             messages=history,
             model="qwen",
             temperature=0.0, 
+            repetition_penalty=1.15,
+            max_tokens=128,
             stream=True,
         ):
             for choice in response.choices:

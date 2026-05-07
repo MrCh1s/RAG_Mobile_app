@@ -34,6 +34,8 @@ while True:
             messages=history,
             model="qwen",
             temperature=0.0,
+            repetition_penalty=1.15,
+            max_tokens=512,
             stream=True,
         ):
             for choice in response.choices:

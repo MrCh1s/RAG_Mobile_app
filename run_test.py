@@ -1,15 +1,9 @@
 import sys
-import os
 import json
 import math
 from mlc_llm import MLCEngine
 from langchain_ollama import OllamaEmbeddings
-
-# Thêm đường dẫn gốc của dự án
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from backend.sqlite_notes import NoteManager  # noqa: E402
-
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+from sqlite_notes import NoteManager
 
 # Hàm tính độ tương đồng bằng Cosine
 def cosine_similarity(v1, v2):
@@ -27,8 +21,8 @@ embeddings = OllamaEmbeddings(
 )
 
 engine = MLCEngine(
-    model=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"),
-    model_lib=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll"),
+    model="dist/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/",
+    model_lib="dist/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll",
     mode="interactive",
     device="cpu",
 )
@@ -39,7 +33,7 @@ history = []
 system_rule = "Bạn là Trợ lý AI cá nhân chuyên tra cứu sổ tay. Nhiệm vụ của bạn là trả lời câu hỏi dựa TRỰC TIẾP và DUY NHẤT vào tài liệu được cung cấp. Trả lời cực kỳ ngắn gọn (1-2 câu), không lặp lại thông tin. Nếu không có thông tin, hãy từ chối trả lời."
 history.append({"role": "system", "content": system_rule})
 
-print("\n HỆ THỐNG SẴN SÀNG! (Gõ '/exit' để thoát)")
+print("\nHỆ THỐNG SẴN SÀNG! (Gõ '/exit' để thoát)")
 print("-" * 60)
 
 while True:
