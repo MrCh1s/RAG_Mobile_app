@@ -3,7 +3,7 @@ import json
 import math
 from mlc_llm import MLCEngine
 from langchain_ollama import OllamaEmbeddings
-from sqlite_notes import NoteManager
+from backend.sqlite_notes import NoteManager
 
 # Hàm tính độ tương đồng bằng Cosine
 def cosine_similarity(v1, v2):
