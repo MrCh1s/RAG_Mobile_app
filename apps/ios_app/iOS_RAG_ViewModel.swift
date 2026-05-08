@@ -17,6 +17,7 @@ class RAGViewModel: ObservableObject {
     
     // Mô hình CoreML sinh Vector
     private var embeddingModel: MLModel?
+    private var tokenizer: BERTTokenizer?
     
     // Đường dẫn tới file database trong Bundle
     private var dbPath: String {
@@ -31,6 +32,16 @@ class RAGViewModel: ObservableObject {
         
         // Khởi tạo Embedding Model offline
         loadEmbeddingModel()
+        
+        // Khởi tạo Tokenizer (Tìm trong folder bundle trước)
+        var vocabURL = Bundle.main.url(forResource: "vocab", withExtension: "txt", subdirectory: "bundle")
+        if vocabURL == nil {
+            vocabURL = Bundle.main.url(forResource: "vocab", withExtension: "txt")
+        }
+        
+        if let finalVocabURL = vocabURL {
+            self.tokenizer = BERTTokenizer(vocabURL: finalVocabURL)
+        }
     }
     
     private func loadEmbeddingModel() {
@@ -77,53 +88,139 @@ class RAGViewModel: ObservableObject {
     // MODULE: Mã hóa Câu hỏi thành Vector Offline
     // ==========================================
     private func generateVectorFromCoreML(text: String) -> [Float] {
-        guard let model = embeddingModel else {
-            print("Chưa có model embedding.")
+        guard let model = embeddingModel, let tokenizer = tokenizer else {
+            print("Chưa có model hoặc tokenizer.")
             return []
         }
-        return [] 
+        
+        let maxLen = 128
+        let tokens = tokenizer.tokenize(text: text, maxLen: maxLen)
+        
+        do {
+            // 1. Chuẩn bị đầu vào cho CoreML
+            let inputIdsArray = try MLMultiArray(shape: [1, maxLen as NSNumber], dataType: .int32)
+            let attentionMaskArray = try MLMultiArray(shape: [1, maxLen as NSNumber], dataType: .int32)
+            
+            for i in 0..<maxLen {
+                inputIdsArray[i] = tokens.inputIds[i] as NSNumber
+                attentionMaskArray[i] = tokens.attentionMask[i] as NSNumber
+            }
+            
+            // 2. Chạy Model Inference
+            let inputProvider = try MLDictionaryFeatureProvider(dictionary: [
+                "input_ids": inputIdsArray,
+                "attention_mask": attentionMaskArray
+            ])
+            
+            let output = try model.prediction(from: inputProvider)
+            
+            // 3. Xử lý Output (Mean Pooling)
+            // Giả sử output name là "last_hidden_state" với shape (1, 128, 768)
+            guard let lastHiddenState = output.featureValue(for: "last_hidden_state")?.multiArrayValue else {
+                return []
+            }
+            
+            let seqLen = 128
+            let hiddenSize = 768 // Thường là 768 cho BERT-base
+            var sentenceEmbedding = [Float](repeating: 0, count: hiddenSize)
+            
+            // Tính trung bình cộng của tất cả các token (Mean Pooling đơn giản)
+            for h in 0..<hiddenSize {
+                var sum: Float = 0
+                for s in 0..<seqLen {
+                    // Truy cập index trong MLMultiArray: [batch, seq, hidden] -> index = s * hiddenSize + h
+                    sum += lastHiddenState[s * hiddenSize + h].floatValue
+                }
+                sentenceEmbedding[h] = sum / Float(seqLen)
+            }
+            
+            return sentenceEmbedding
+            
+        } catch {
+            print("Lỗi sinh Vector CoreML: \(error)")
+            return []
+        }
     }
 
     // ==========================================
     // MODULE: Tìm kiếm Database (Vecto + SQLite)
     // ==========================================
+    // ==========================================
+    // MODULE: Tìm kiếm Database (Vecto + SQLite)
+    // ==========================================
     func searchDatabaseOffline(question: String) -> [String] {
-        // 1. Sinh vector từ câu hỏi của sếp
+        // 1. Sinh vector từ câu hỏi
         let questionVector = generateVectorFromCoreML(text: question)
         
-        // (Tạm thời Fallback về keyword search nếu Vector chưa cài đặt xong bên Xcode)
-        if questionVector.isEmpty {
-            let keywords = question.components(separatedBy: .whitespacesAndNewlines).filter { $0.count > 2 }
-            var allResults: Set<String> = []
-            for word in keywords {
-                let matches = LocalDatabase.shared.searchNotes(keyword: word)
-                for match in matches {
-                    allResults.insert(match)
-                }
-            }
-            return Array(allResults.prefix(3))
-        }
-        
-        // 2. TÌM KIẾM THEO NGỮ NGHĨA THỰC SỰ
-        /*
-        let allNotes = LocalDatabase.shared.getAllNotesWithEmbeddings() // Cần viết thêm hàm này trong LocalDatabase
         var results: [(content: String, score: Float)] = []
         
-        for note in allNotes {
-            guard let noteVector = note.embedding else { continue }
-            let score = cosineSimilarity(questionVector, noteVector)
-            results.append((content: note.chunkContext, score: score))
+        // 2. TÌM KIẾM THEO TỪ KHÓA (Ghi chú cũ)
+        let keywords = question.components(separatedBy: .whitespacesAndNewlines).filter { $0.count > 2 }
+        for word in keywords {
+            let matches = LocalDatabase.shared.searchNotes(keyword: word)
+            for match in matches {
+                results.append((content: match, score: 0.5)) // Gán điểm cơ bản cho từ khóa
+            }
         }
         
-        // Lọc mức điểm an toàn > 0.6 và lấy top 3
-        let topResults = results.filter { $0.score > 0.6 }
-                                .sorted { $0.score > $1.score }
+        // 3. TÌM KIẾM THEO NGỮ NGHĨA (Tài liệu PDF mới)
+        if !questionVector.isEmpty {
+            let allChunks = LocalDatabase.shared.getAllChunks()
+            for chunk in allChunks {
+                guard let chunkVector = chunk.embedding else { continue }
+                let score = cosineSimilarity(questionVector, chunkVector)
+                
+                // Chỉ lấy các đoạn có độ tương đồng cao (> 0.6)
+                if score > 0.6 {
+                    results.append((content: chunk.content, score: score))
+                }
+            }
+        }
+        
+        // Sắp xếp theo điểm số từ cao xuống thấp và lấy top 3
+        let topResults = results.sorted { $0.score > $1.score }
                                 .prefix(3)
                                 .map { $0.content }
                                 
         return Array(topResults)
-        */
-        return []
+    }
+    
+    // ==========================================
+    // MODULE: Xử lý tài liệu (PDF/Khoa học)
+    // ==========================================
+    func processDocument(at url: URL) async {
+        // Yêu cầu quyền truy cập file (đối với file từ app Files)
+        guard url.startAccessingSecurityScopedResource() else {
+            await updateChatLog("\n[Lỗi] Không có quyền truy cập tài liệu.", isTyping: false)
+            return
+        }
+        defer { url.stopAccessingSecurityScopedResource() }
+        
+        await updateChatLog("\n[Hệ thống] Đang đọc tài liệu: \(url.lastPathComponent)...", isTyping: true)
+        
+        // 1. Trích xuất text từ PDF
+        guard let text = PDFManager.shared.extractText(from: url) else {
+            await updateChatLog("\n[Lỗi] Không thể trích xuất văn bản từ PDF.", isTyping: false)
+            return
+        }
+        
+        // 2. Chia nhỏ văn bản (Chunking)
+        let chunks = PDFManager.shared.chunkText(text)
+        
+        // 3. Lưu thông tin tài liệu vào DB
+        let docId = LocalDatabase.shared.insertDocument(name: url.lastPathComponent)
+        
+        // 4. Sinh vector và lưu từng đoạn văn bản
+        var successCount = 0
+        for chunk in chunks {
+            let vector = generateVectorFromCoreML(text: chunk)
+            
+            // Lưu vào database (kể cả khi vector rỗng - fallback)
+            LocalDatabase.shared.insertChunk(documentId: docId, content: chunk, embedding: vector)
+            if !vector.isEmpty { successCount += 1 }
+        }
+        
+        await updateChatLog("\n[Thành công] Đã nạp tài liệu. Đã vector hóa \(successCount)/\(chunks.count) đoạn văn bản.", isTyping: false)
     }
     
     // ==========================================
