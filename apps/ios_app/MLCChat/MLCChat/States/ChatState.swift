@@ -443,4 +443,99 @@ private extension ChatState {
 
         }
     }
+
+    // AI helper to clean up note text
+    func cleanUpNoteText(rawText: String) async -> String {
+        let systemPrompt = """
+        Bạn là chuyên gia biên tập và định dạng văn bản. Nhiệm vụ của bạn là chuẩn hóa ghi chú thô của người dùng thành nội dung có cấu trúc rõ ràng, sửa lỗi chính tả, định dạng đẹp mắt bằng markdown (sử dụng gạch đầu dòng hoặc tiêu đề nếu cần). Hãy giữ nguyên ý nghĩa cốt lõi và thông tin chi tiết, không tự ý bịa đặt thông tin.
+        """
+        let messages = [
+            ChatCompletionMessage(role: .system, content: systemPrompt),
+            ChatCompletionMessage(role: .user, content: rawText)
+        ]
+        
+        var replyText = ""
+        for await res in await engine.chat.completions.create(
+            messages: messages
+        ) {
+            for choice in res.choices {
+                if let content = choice.delta.content {
+                    replyText += content.asText()
+                }
+            }
+        }
+        return replyText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // AI helper to classify and tag note text
+    func classifyAndTagNoteText(rawText: String) async -> (folder: String, tags: [String]) {
+        let systemPrompt = """
+        Bạn là trợ lý AI phân tích và phân loại ghi chú. Hãy đọc ghi chú dưới đây và phân loại nó vào một Thư mục (folder) phù hợp nhất (ví dụ: Học tập, Công việc, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác) và gán các Thẻ (tags) liên quan (tối đa 3 thẻ).
+        Bạn bắt buộc phải trả về kết quả dưới định dạng JSON thô có cấu trúc chính xác sau:
+        {
+          "folder": "Tên thư mục",
+          "tags": ["thẻ 1", "thẻ 2"]
+        }
+        Chỉ trả về JSON thô, không thêm bất kỳ từ ngữ giải thích nào khác.
+        """
+        
+        let messages = [
+            ChatCompletionMessage(role: .system, content: systemPrompt),
+            ChatCompletionMessage(role: .user, content: rawText)
+        ]
+        
+        var replyText = ""
+        for await res in await engine.chat.completions.create(
+            messages: messages
+        ) {
+            for choice in res.choices {
+                if let content = choice.delta.content {
+                    replyText += content.asText()
+                }
+            }
+        }
+        
+        replyText = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        var folder = "Khác"
+        var tags: [String] = []
+        
+        var cleanJSON = replyText
+        if cleanJSON.contains("```") {
+            if cleanJSON.contains("```json") {
+                if let range = cleanJSON.range(of: "```json") {
+                    let suffix = cleanJSON[range.upperBound...]
+                    if let endRange = suffix.range(of: "```") {
+                        cleanJSON = String(suffix[..<endRange.lowerBound])
+                    }
+                }
+            } else {
+                let parts = cleanJSON.components(separatedBy: "```")
+                if parts.count >= 3 {
+                    cleanJSON = parts[1]
+                }
+            }
+        }
+        
+        cleanJSON = cleanJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if let data = cleanJSON.data(using: .utf8) {
+            do {
+                if let jsonDict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                    if let f = jsonDict["folder"] as? String {
+                        folder = f
+                    }
+                    if let t = jsonDict["tags"] as? [String] {
+                        tags = t
+                    } else if let tStr = jsonDict["tags"] as? String {
+                        tags = [tStr]
+                    }
+                }
+            } catch {
+                print("Lỗi parse JSON: \(error). Raw: \(replyText)")
+            }
+        }
+        
+        return (folder, tags)
+    }
 }

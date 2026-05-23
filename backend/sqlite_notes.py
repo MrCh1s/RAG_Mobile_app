@@ -17,25 +17,30 @@ class NoteManager:
             CREATE TABLE IF NOT EXISTS notes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 folder_name TEXT,
+                tags TEXT,
                 note_id TEXT,
                 chunk_context TEXT NOT NULL,
                 embedding TEXT, 
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        try:
+            self.cursor.execute("ALTER TABLE notes ADD COLUMN tags TEXT")
+        except sqlite3.OperationalError:
+            pass
         self.conn.commit()
 
-    def add_chunk(self, folder_name, note_id, chunk_context, vector=None):
+    def add_chunk(self, folder_name, note_id, chunk_context, vector=None, tags=None):
         vector_str = json.dumps(vector) if vector else None
         self.cursor.execute('''
-            INSERT INTO notes (folder_name, note_id, chunk_context, embedding) 
-            VALUES (?, ?, ?, ?)
-        ''', (folder_name, note_id, chunk_context, vector_str))
+            INSERT INTO notes (folder_name, note_id, chunk_context, embedding, tags) 
+            VALUES (?, ?, ?, ?, ?)
+        ''', (folder_name, note_id, chunk_context, vector_str, tags))
         self.conn.commit()
         return self.cursor.lastrowid
 
     def get_all_notes(self):
-        self.cursor.execute('SELECT id, folder_name, note_id, chunk_context FROM notes')
+        self.cursor.execute('SELECT id, folder_name, note_id, chunk_context, tags FROM notes')
         return self.cursor.fetchall()
         
     def get_note(self, note_id):

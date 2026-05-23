@@ -8,6 +8,8 @@ class LocalDatabase {
     struct Note: Identifiable {
         let id: Int32
         let content: String
+        let folderName: String
+        let tags: String
         let createdAt: String
     }
 
@@ -38,6 +40,8 @@ class LocalDatabase {
         CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             content TEXT NOT NULL,
+            folder_name TEXT DEFAULT 'Chưa phân loại',
+            tags TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -65,14 +69,31 @@ class LocalDatabase {
             }
         }
         sqlite3_finalize(createTableStatement)
+
+        // Run migrations for old databases
+        let addFolderColumnString = "ALTER TABLE notes ADD COLUMN folder_name TEXT DEFAULT 'Chưa phân loại';"
+        var addFolderStatement: OpaquePointer?
+        if sqlite3_prepare_v2(db, addFolderColumnString, -1, &addFolderStatement, nil) == SQLITE_OK {
+            sqlite3_step(addFolderStatement)
+        }
+        sqlite3_finalize(addFolderStatement)
+        
+        let addTagsColumnString = "ALTER TABLE notes ADD COLUMN tags TEXT DEFAULT '';"
+        var addTagsStatement: OpaquePointer?
+        if sqlite3_prepare_v2(db, addTagsColumnString, -1, &addTagsStatement, nil) == SQLITE_OK {
+            sqlite3_step(addTagsStatement)
+        }
+        sqlite3_finalize(addTagsStatement)
     }
     
-    func insertNote(content: String) {
-        let insertStatementString = "INSERT INTO notes (content) VALUES (?);"
+    func insertNote(content: String, folderName: String = "Chưa phân loại", tags: String = "") {
+        let insertStatementString = "INSERT INTO notes (content, folder_name, tags) VALUES (?, ?, ?);"
         var insertStatement: OpaquePointer?
         
         if sqlite3_prepare_v2(db, insertStatementString, -1, &insertStatement, nil) == SQLITE_OK {
             sqlite3_bind_text(insertStatement, 1, (content as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(insertStatement, 2, (folderName as NSString).utf8String, -1, nil)
+            sqlite3_bind_text(insertStatement, 3, (tags as NSString).utf8String, -1, nil)
             
             if sqlite3_step(insertStatement) == SQLITE_DONE {
                 print("Đã thêm ghi chú thành công.")
@@ -84,7 +105,7 @@ class LocalDatabase {
     }
     
     func fetchAllNotes() -> [Note] {
-        let queryStatementString = "SELECT id, content, created_at FROM notes ORDER BY created_at DESC;"
+        let queryStatementString = "SELECT id, content, folder_name, tags, created_at FROM notes ORDER BY created_at DESC;"
         var queryStatement: OpaquePointer?
         var notes: [Note] = []
         
@@ -92,9 +113,16 @@ class LocalDatabase {
             while sqlite3_step(queryStatement) == SQLITE_ROW {
                 let id = sqlite3_column_int(queryStatement, 0)
                 let content = String(cString: sqlite3_column_text(queryStatement, 1))
-                let createdAt = String(cString: sqlite3_column_text(queryStatement, 2))
                 
-                notes.append(Note(id: id, content: content, createdAt: createdAt))
+                let folderNameVal = sqlite3_column_text(queryStatement, 2)
+                let folderName = folderNameVal != nil ? String(cString: folderNameVal!) : "Chưa phân loại"
+                
+                let tagsVal = sqlite3_column_text(queryStatement, 3)
+                let tags = tagsVal != nil ? String(cString: tagsVal!) : ""
+                
+                let createdAt = String(cString: sqlite3_column_text(queryStatement, 4))
+                
+                notes.append(Note(id: id, content: content, folderName: folderName, tags: tags, createdAt: createdAt))
             }
         }
         sqlite3_finalize(queryStatement)
