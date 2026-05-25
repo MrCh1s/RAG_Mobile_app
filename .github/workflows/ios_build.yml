@@ -65,7 +65,7 @@ jobs:
                           if not os.path.exists(dst):
                               os.symlink(src, dst)
                               print(f'Created symlink: {dst} -> {src}')
-                          if f == 'libtvm_compiler.dylib':
+                          if f == 'libtvm_runtime.dylib':
                               dst_tvm = os.path.join(mlc_llm_dir, 'libtvm.dylib')
                               if not os.path.exists(dst_tvm):
                                   os.symlink(src, dst_tvm)
