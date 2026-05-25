@@ -46,7 +46,7 @@ jobs:
           # Install directly from GitHub releases (the actual host for mlc.ai/wheels)
           python3 -m pip install \
             "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_llm_nightly_cpu-0.20.dev162-py3-none-macosx_13_0_arm64.whl" \
-            "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev990-py3-none-macosx_13_0_arm64.whl"
+            "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
           # Verify mlc_llm is importable from the correct python
           python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
