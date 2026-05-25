@@ -72,8 +72,13 @@ jobs:
                                   print(f'Created symlink: {dst_tvm} -> {src}')
           "
 
+          # Compile patch library for missing LogMessage::level_strings_ symbol
+          echo 'namespace tvm { namespace runtime { namespace detail { struct LogMessage { static const char* level_strings_[]; }; const char* LogMessage::level_strings_[] = {"INFO", "WARNING", "ERROR", "FATAL"}; } } }' > patch.cpp
+          clang++ -shared -fPIC -o "$GITHUB_WORKSPACE/libpatch.dylib" patch.cpp
+          echo "DYLD_INSERT_LIBRARIES=$GITHUB_WORKSPACE/libpatch.dylib" >> $GITHUB_ENV
+
           # Verify mlc_llm is importable from the correct python
-          python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
+          DYLD_INSERT_LIBRARIES="$GITHUB_WORKSPACE/libpatch.dylib" python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
       - name: Install Rust iOS target
         run: rustup target add aarch64-apple-ios
