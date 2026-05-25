@@ -114,6 +114,11 @@ jobs:
           if [ ! -d "mlc-llm" ]; then
             echo "Cloning MLC-LLM..."
             git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
+          else
+            echo "mlc-llm directory restored from cache. Ensuring submodules are initialized..."
+            cd mlc-llm
+            git submodule update --init --recursive
+            cd ..
           fi
           du -sh mlc-llm/
 
