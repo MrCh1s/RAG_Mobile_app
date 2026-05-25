@@ -40,45 +40,49 @@ jobs:
         with:
           python-version: '3.11'        # ← 3.11 avoids some 3.10 compat bugs with mlc
 
-      - name: Install Python dependencies
+      - name: Install Python dependencies and Build MLC-LLM from source
         run: |
           python3 -m pip install -U pip wheel pytest
-          # Install directly from GitHub releases (the actual host for mlc.ai/wheels)
+          
+          # Install mlc_ai_nightly_cpu
           python3 -m pip install \
-            "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_llm_nightly_cpu-0.20.dev162-py3-none-macosx_13_0_arm64.whl" \
             "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
           
-          # Fix macOS dynamic library loading issue by symlinking libtvm.dylib from tvm to mlc_llm
-          python3 -c "
-          import os, tvm
-          tvm_dir = os.path.dirname(tvm.__file__)
-          lib_dir = os.path.join(tvm_dir, 'lib')
-          site_packages = os.path.dirname(tvm_dir)
-          mlc_llm_dir = os.path.join(site_packages, 'mlc_llm')
-          search_dirs = [lib_dir, tvm_dir]
-          for d in search_dirs:
-              if os.path.exists(d):
-                  for f in os.listdir(d):
-                      if f.endswith('.dylib'):
-                          src = os.path.join(d, f)
-                          dst = os.path.join(mlc_llm_dir, f)
-                          if not os.path.exists(dst):
-                              os.symlink(src, dst)
-                              print(f'Created symlink: {dst} -> {src}')
-                          if f == 'libtvm_runtime.dylib':
-                              dst_tvm = os.path.join(mlc_llm_dir, 'libtvm.dylib')
-                              if not os.path.exists(dst_tvm):
-                                  os.symlink(src, dst_tvm)
-                                  print(f'Created symlink: {dst_tvm} -> {src}')
-          "
-
-          # Compile patch library for missing LogMessage::level_strings_ symbol
-          echo 'namespace tvm { namespace runtime { namespace detail { struct LogMessage { static const char* level_strings_[]; }; const char* LogMessage::level_strings_[] = {"INFO", "WARNING", "ERROR", "FATAL"}; } } }' > patch.cpp
-          clang++ -shared -fPIC -o "$GITHUB_WORKSPACE/libpatch.dylib" patch.cpp
-          echo "DYLD_INSERT_LIBRARIES=$GITHUB_WORKSPACE/libpatch.dylib" >> $GITHUB_ENV
-
+          # Clone MLC-LLM repository recursively
+          git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
+          
+          # Set up prebuilt TVM directory for CMake to link against installed mlc_ai wheel
+          mkdir -p tvm_prebuilt/build
+          ln -s "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include
+          ln -s "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty
+          
+          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
+          ln -s "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib
+          ln -s "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib
+          
+          # Build MLC-LLM C++ libraries
+          cd mlc-llm
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DTVM_HOME="$GITHUB_WORKSPACE/tvm_prebuilt" \
+            -DUSE_METAL=ON
+          cmake --build . --parallel 4
+          cd ..
+          
+          # Install python package in editable mode
+          cd python
+          python3 -m pip install -e .
+          cd ../..
+          
+          # Copy compiled dynamic library and symlink TVM runtimes to satisfy rpath requirements
+          cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
+          
           # Verify mlc_llm is importable from the correct python
-          DYLD_INSERT_LIBRARIES="$GITHUB_WORKSPACE/libpatch.dylib" python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
+          python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
       - name: Install Rust iOS target
         run: rustup target add aarch64-apple-ios
