@@ -354,7 +354,6 @@ jobs:
             -sdk ${{ matrix.sdk }} \
             -configuration Release \
             -derivedDataPath build_output \
-            HEADER_SEARCH_PATHS="$(pwd)/../../MLCSwift/tvm_home/include" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_ENTITLEMENTS="" \
