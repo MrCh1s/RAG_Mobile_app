@@ -414,7 +414,10 @@
                 DEVELOPMENT_TEAM = 3FR42MXLK9;
                 ENABLE_PREVIEWS = YES;
                 GENERATE_INFOPLIST_FILE = YES;
-                "HEADER_SEARCH_PATHS[arch=*]" = "";
+                HEADER_SEARCH_PATHS = (
+                    "$(SRCROOT)/../../MLCSwift/tvm_home/include",
+                    "$(inherited)",
+                );
                 INFOPLIST_FILE = MLCChat/Info.plist;
                 INFOPLIST_KEY_CFBundleDisplayName = "NoteAI Chat";
                 INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -469,7 +472,10 @@
                 DEVELOPMENT_TEAM = 3FR42MXLK9;
                 ENABLE_PREVIEWS = YES;
                 GENERATE_INFOPLIST_FILE = YES;
-                "HEADER_SEARCH_PATHS[arch=*]" = "";
+                HEADER_SEARCH_PATHS = (
+                    "$(SRCROOT)/../../MLCSwift/tvm_home/include",
+                    "$(inherited)",
+                );
                 INFOPLIST_FILE = MLCChat/Info.plist;
                 INFOPLIST_KEY_CFBundleDisplayName = "NoteAI Chat";
                 INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
