@@ -15,7 +15,6 @@
 #include <tvm/ffi/optional.h>
 #include <tvm/ffi/string.h>
 
-using namespace tvm::runtime;
 using tvm::ffi::Function;
 using tvm::ffi::Module;
 using tvm::ffi::Optional;
