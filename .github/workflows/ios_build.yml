@@ -127,6 +127,12 @@ jobs:
           fi
           
           if [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/module.h" ]; then
+            echo "Listing contents of mlc-llm/3rdparty/tvm:"
+            ls -la mlc-llm/3rdparty/tvm
+            if [ -d "mlc-llm/3rdparty/tvm/include" ]; then
+              echo "Listing contents of mlc-llm/3rdparty/tvm/include:"
+              ls -la mlc-llm/3rdparty/tvm/include
+            fi
             echo "ERROR: TVM headers are missing in mlc-llm/3rdparty/tvm!"
             exit 1
           fi
