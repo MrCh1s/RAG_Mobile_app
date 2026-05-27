@@ -121,7 +121,7 @@ jobs:
             cd 3rdparty/tvm
             echo "Initializing nested TVM submodules..."
             git submodule update --init --recursive 3rdparty/tvm-ffi
-            cd ../..
+            cd "$GITHUB_WORKSPACE"
           else
             echo "mlc-llm directory and TVM headers restored from cache."
           fi
