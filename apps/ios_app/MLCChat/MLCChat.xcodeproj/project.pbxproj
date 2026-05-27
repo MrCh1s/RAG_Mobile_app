@@ -415,7 +415,7 @@
                 ENABLE_PREVIEWS = YES;
                 GENERATE_INFOPLIST_FILE = YES;
                 HEADER_SEARCH_PATHS = (
-                    "$(SRCROOT)/../../MLCSwift/tvm_home/include",
+                    "$(SRCROOT)/../MLCSwift/tvm_home/include",
                     "$(inherited)",
                 );
                 INFOPLIST_FILE = MLCChat/Info.plist;
@@ -473,7 +473,7 @@
                 ENABLE_PREVIEWS = YES;
                 GENERATE_INFOPLIST_FILE = YES;
                 HEADER_SEARCH_PATHS = (
-                    "$(SRCROOT)/../../MLCSwift/tvm_home/include",
+                    "$(SRCROOT)/../MLCSwift/tvm_home/include",
                     "$(inherited)",
                 );
                 INFOPLIST_FILE = MLCChat/Info.plist;

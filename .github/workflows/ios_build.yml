@@ -96,7 +96,7 @@ jobs:
             apps/ios_app/build
             apps/ios_app/MLCSwift/tvm_home
             apps/ios_app/MLCChat/dist/lib
-          key: ${{ runner.os }}-mlc-${{ matrix.platform }}-${{ hashFiles('apps/ios_app/mlc-package-config.json', 'apps/ios_app/prepare_libs.sh') }}
+          key: ${{ runner.os }}-mlc-${{ matrix.platform }}-${{ hashFiles('apps/ios_app/MLCChat/mlc-package-config.json', 'apps/ios_app/prepare_libs.sh') }}
           restore-keys: |
             ${{ runner.os }}-mlc-${{ matrix.platform }}-
 
@@ -132,6 +132,10 @@ jobs:
             echo "TVM headers copied successfully"
           else
             echo "Warning: TVM headers not found in mlc-llm"
+          fi
+          if [ ! -f "apps/ios_app/MLCSwift/tvm_home/include/tvm/runtime/module.h" ]; then
+            echo "ERROR: TVM headers were not copied successfully! Check if mlc-llm/3rdparty/tvm is populated."
+            exit 1
           fi
 
       - name: Build MLC-LLM iOS Libraries (${{ matrix.name }})

@@ -138,5 +138,5 @@ cmake --build . --config release --target mlc_llm_static -j3
 cmake --build . --target install --config release -j3
 cd ..
 
-rm -rf $MLC_LLM_SOURCE_DIR/ios/MLCSwift/tvm_home
-ln -s $MLC_LLM_SOURCE_DIR/3rdparty/tvm $MLC_LLM_SOURCE_DIR/ios/MLCSwift/tvm_home
+rm -rf $(pwd)/MLCSwift/tvm_home
+ln -s $MLC_LLM_SOURCE_DIR/3rdparty/tvm $(pwd)/MLCSwift/tvm_home
