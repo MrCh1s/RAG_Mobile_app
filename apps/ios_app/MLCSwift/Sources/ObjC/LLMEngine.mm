@@ -14,7 +14,6 @@
 #include <tvm/ffi/function.h>
 #include <tvm/ffi/optional.h>
 #include <tvm/ffi/string.h>
-#include <tvm/runtime/module.h>
 
 using namespace tvm::runtime;
 using tvm::ffi::Function;

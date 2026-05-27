@@ -111,7 +111,7 @@ jobs:
 
       - name: Clone MLC-LLM repository
         run: |
-          if [ ! -d "mlc-llm" ] || [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/module.h" ] || [ ! -f "mlc-llm/3rdparty/tvm/3rdparty/tvm-ffi/include/tvm/ffi/extra/module.h" ]; then
+          if [ ! -d "mlc-llm" ] || [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/logging.h" ] || [ ! -f "mlc-llm/3rdparty/tvm/3rdparty/tvm-ffi/include/tvm/ffi/extra/module.h" ]; then
             echo "Cloning MLC-LLM..."
             rm -rf mlc-llm
             git clone --depth 1 https://github.com/mlc-ai/mlc-llm.git
@@ -126,13 +126,7 @@ jobs:
             echo "mlc-llm directory and TVM headers restored from cache."
           fi
           
-          if [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/module.h" ]; then
-            echo "Listing contents of mlc-llm/3rdparty/tvm:"
-            ls -la mlc-llm/3rdparty/tvm
-            if [ -d "mlc-llm/3rdparty/tvm/include" ]; then
-              echo "Listing contents of mlc-llm/3rdparty/tvm/include:"
-              ls -la mlc-llm/3rdparty/tvm/include
-            fi
+          if [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/logging.h" ]; then
             echo "ERROR: TVM headers are missing in mlc-llm/3rdparty/tvm!"
             exit 1
           fi
