@@ -115,8 +115,20 @@ jobs:
             echo "Cloning MLC-LLM recursively..."
             rm -rf mlc-llm
             git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
+            
+            if [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/module.h" ]; then
+              echo "Submodule clone incomplete. Retrying submodule update..."
+              cd mlc-llm
+              git submodule update --init --recursive --depth 1 || git submodule update --init --recursive
+              cd ..
+            fi
           else
             echo "mlc-llm directory and TVM headers restored from cache."
+          fi
+          
+          if [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/module.h" ]; then
+            echo "ERROR: TVM headers are missing in mlc-llm/3rdparty/tvm!"
+            exit 1
           fi
           du -sh mlc-llm/
 
@@ -125,8 +137,8 @@ jobs:
           rm -rf apps/ios_app/MLCSwift/tvm_home
           rm -rf tvm_home
           if [ -d "mlc-llm/3rdparty/tvm" ]; then
-            ln -sf ../../../mlc-llm/3rdparty/tvm apps/ios_app/MLCSwift/tvm_home
-            ln -sf mlc-llm/3rdparty/tvm tvm_home
+            ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm" apps/ios_app/MLCSwift/tvm_home
+            ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm" tvm_home
             echo "TVM headers symlinked successfully"
           else
             echo "Warning: TVM headers not found in mlc-llm"
