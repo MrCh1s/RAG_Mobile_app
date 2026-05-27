@@ -147,7 +147,7 @@ jobs:
           else
             echo "Warning: TVM headers not found in mlc-llm"
           fi
-          if [ ! -f "apps/ios_app/MLCSwift/tvm_home/include/tvm/runtime/module.h" ]; then
+          if [ ! -f "apps/ios_app/MLCSwift/tvm_home/include/tvm/runtime/logging.h" ]; then
             echo "ERROR: TVM headers were not copied successfully! Check if mlc-llm/3rdparty/tvm is populated."
             exit 1
           fi
