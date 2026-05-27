@@ -122,12 +122,12 @@ jobs:
 
       - name: Setup TVM headers
         run: |
-          mkdir -p apps/ios_app/MLCSwift/tvm_home
-          mkdir -p tvm_home
+          rm -rf apps/ios_app/MLCSwift/tvm_home
+          rm -rf tvm_home
           if [ -d "mlc-llm/3rdparty/tvm" ]; then
-            cp -r mlc-llm/3rdparty/tvm/* apps/ios_app/MLCSwift/tvm_home/
-            cp -r mlc-llm/3rdparty/tvm/* tvm_home/
-            echo "TVM headers copied successfully"
+            ln -sf ../../../mlc-llm/3rdparty/tvm apps/ios_app/MLCSwift/tvm_home
+            ln -sf mlc-llm/3rdparty/tvm tvm_home
+            echo "TVM headers symlinked successfully"
           else
             echo "Warning: TVM headers not found in mlc-llm"
           fi
