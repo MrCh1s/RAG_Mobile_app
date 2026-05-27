@@ -111,14 +111,12 @@ jobs:
 
       - name: Clone MLC-LLM repository
         run: |
-          if [ ! -d "mlc-llm" ]; then
-            echo "Cloning MLC-LLM..."
+          if [ ! -d "mlc-llm" ] || [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/module.h" ]; then
+            echo "Cloning MLC-LLM recursively..."
+            rm -rf mlc-llm
             git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
           else
-            echo "mlc-llm directory restored from cache. Ensuring submodules are initialized..."
-            cd mlc-llm
-            git submodule update --init --recursive
-            cd ..
+            echo "mlc-llm directory and TVM headers restored from cache."
           fi
           du -sh mlc-llm/
 
