@@ -25,6 +25,7 @@
         C0D643C429F99B07004DDAA4 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D643C229F99B07004DDAA4 /* ChatView.swift */; };
         C0D643C829F99B34004DDAA4 /* MessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D643C729F99B34004DDAA4 /* MessageView.swift */; };
         C0DDBDF62A39103F00E9D060 /* ChatState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D643C029F99B07004DDAA4 /* ChatState.swift */; };
+        DEA000042A86337E00254E67 /* NoteEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEA000032A86337E00254E67 /* NoteEditView.swift */; };
         F3C280002BEB16ED00F1E016 /* bundle in CopyFiles */ = {isa = PBXBuildFile; fileRef = F3C27FFF2BEB16ED00F1E016 /* bundle */; };
 /* End PBXBuildFile section */
 
@@ -70,6 +71,7 @@
         C0D643C029F99B07004DDAA4 /* ChatState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChatState.swift; sourceTree = "<group>"; };
         C0D643C229F99B07004DDAA4 /* ChatView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
         C0D643C729F99B34004DDAA4 /* MessageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessageView.swift; sourceTree = "<group>"; };
+        DEA000032A86337E00254E67 /* NoteEditView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NoteEditView.swift; sourceTree = "<group>"; };
         C0DDBE0B2A3BA6F800E9D060 /* MLCSwift */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = MLCSwift; sourceTree = "<group>"; };
         F3C27FFF2BEB16ED00F1E016 /* bundle */ = {isa = PBXFileReference; lastKnownFileType = folder; name = bundle; path = dist/bundle; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -115,6 +117,7 @@
                 1453A4CA2A1354B9001B909F /* StartView.swift */,
                 C0D643C729F99B34004DDAA4 /* MessageView.swift */,
                 C0D643C229F99B07004DDAA4 /* ChatView.swift */,
+                DEA000032A86337E00254E67 /* NoteEditView.swift */,
             );
             path = Views;
             sourceTree = "<group>";
@@ -280,6 +283,7 @@
                 1453A4D02A1354B9001B909F /* ModelView.swift in Sources */,
                 1453A4CF2A1354B9001B909F /* StartView.swift in Sources */,
                 DEA000022A86337E00254E67 /* LocalDatabase.swift in Sources */,
+                DEA000042A86337E00254E67 /* NoteEditView.swift in Sources */,
             );
             runOnlyForDeploymentPostprocessing = 0;
         };

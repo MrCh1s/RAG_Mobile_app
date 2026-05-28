@@ -100,7 +100,7 @@ private extension ChatView {
                         .id(messagesBottomID)
                 }
             }
-            .onChange(of: chatState.displayMessages) { _ in
+            .onChange(of: chatState.displayMessages) {
                 withAnimation {
                     scrollViewProxy.scrollTo(messagesBottomID, anchor: .bottom)
                 }
