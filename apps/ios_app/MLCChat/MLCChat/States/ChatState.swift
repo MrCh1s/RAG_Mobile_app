@@ -441,6 +441,7 @@ private extension ChatState {
                 self.switchToReady()
             }
 
+        }
     }
 }
 
