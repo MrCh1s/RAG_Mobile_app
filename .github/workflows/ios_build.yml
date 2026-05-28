@@ -105,7 +105,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: apps/ios_app/MLCChat/bundle
-          key: ${{ runner.os }}-bundle-v3-${{ hashFiles('apps/ios_app/MLCChat/mlc-package-config.json') }}
+          key: ${{ runner.os }}-bundle-v4-${{ hashFiles('apps/ios_app/MLCChat/mlc-package-config.json') }}
           restore-keys: |
             ${{ runner.os }}-bundle-
 
