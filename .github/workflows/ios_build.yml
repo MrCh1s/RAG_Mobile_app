@@ -100,14 +100,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mlc-${{ matrix.platform }}-
 
-      - name: Cache Model Bundle
-        id: cache-bundle
-        uses: actions/cache@v4
-        with:
-          path: apps/ios_app/MLCChat/bundle
-          key: ${{ runner.os }}-bundle-v4-${{ hashFiles('apps/ios_app/MLCChat/mlc-package-config.json') }}
-          restore-keys: |
-            ${{ runner.os }}-bundle-
+      # Model Bundle caching removed to force build from scratch
 
       - name: Clone MLC-LLM repository
         run: |
@@ -206,7 +199,6 @@ jobs:
           df -h
 
       - name: Package models for iOS
-        if: steps.cache-bundle.outputs.cache-hit != 'true'
         run: |
           set -o pipefail
           export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
@@ -291,7 +283,9 @@ jobs:
                   json.dump(config, f, indent=4)
               print('✓ Patched config successfully')
           else:
-              print(f'! Warning: config file not found to patch at {path}')
+              print(f'ERROR: config file not found to patch at {path}')
+              import sys
+              sys.exit(1)
 
       - name: Compile real model library
         run: |
