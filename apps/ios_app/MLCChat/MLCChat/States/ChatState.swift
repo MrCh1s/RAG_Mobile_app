@@ -175,15 +175,13 @@ final class ChatState: ObservableObject {
         appendMessage(role: .assistant, message: "")
         
         Task {
-            // Update/Verify system prompt in history
-            if self.historyMessages.isEmpty || self.historyMessages[0].role != .system {
-                self.historyMessages.insert(ChatCompletionMessage(role: .system, content: systemPrompt), at: 0)
-            } else {
-                self.historyMessages[0] = ChatCompletionMessage(role: .system, content: systemPrompt)
+            var finalPrompt = prompt
+            if self.historyMessages.isEmpty {
+                finalPrompt = "\(systemPrompt)\n\n\(prompt)"
             }
             
             self.historyMessages.append(
-                ChatCompletionMessage(role: .user, content: prompt)
+                ChatCompletionMessage(role: .user, content: finalPrompt)
             )
             var finishReasonLength = false
             var finalUsageTextLabel = ""
@@ -452,8 +450,7 @@ extension ChatState {
         Bạn là chuyên gia biên tập và định dạng văn bản. Nhiệm vụ của bạn là chuẩn hóa ghi chú thô của người dùng thành nội dung có cấu trúc rõ ràng, sửa lỗi chính tả, định dạng đẹp mắt bằng markdown (sử dụng gạch đầu dòng hoặc tiêu đề nếu cần). Hãy giữ nguyên ý nghĩa cốt lõi và thông tin chi tiết, không tự ý bịa đặt thông tin.
         """
         let messages = [
-            ChatCompletionMessage(role: .system, content: systemPrompt),
-            ChatCompletionMessage(role: .user, content: rawText)
+            ChatCompletionMessage(role: .user, content: "\(systemPrompt)\n\n\(rawText)")
         ]
         
         var replyText = ""
@@ -482,8 +479,7 @@ extension ChatState {
         """
         
         let messages = [
-            ChatCompletionMessage(role: .system, content: systemPrompt),
-            ChatCompletionMessage(role: .user, content: rawText)
+            ChatCompletionMessage(role: .user, content: "\(systemPrompt)\n\nNội dung ghi chú:\n\(rawText)")
         ]
         
         var replyText = ""
