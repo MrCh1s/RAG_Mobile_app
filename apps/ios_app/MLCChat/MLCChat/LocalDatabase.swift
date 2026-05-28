@@ -182,7 +182,9 @@ class LocalDatabase {
             sqlite3_bind_text(statement, 2, (content as NSString).utf8String, -1, nil)
             
             // Chuyển [Float] thành Data để lưu vào BLOB
-            let data = Data(buffer: UnsafeBufferPointer(start: embedding, count: embedding.count))
+            let data = embedding.withUnsafeBufferPointer { buffer in
+                Data(buffer: buffer)
+            }
             _ = data.withUnsafeBytes { bytes in
                 sqlite3_bind_blob(statement, 3, bytes.baseAddress, Int32(data.count), nil)
             }

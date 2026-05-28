@@ -441,9 +441,10 @@ private extension ChatState {
                 self.switchToReady()
             }
 
-        }
     }
+}
 
+extension ChatState {
     // AI helper to clean up note text
     func cleanUpNoteText(rawText: String) async -> String {
         let systemPrompt = """
