@@ -266,6 +266,27 @@ jobs:
                   config['model_config']['context_window_size'] = 2048
                   config['model_config']['prefill_chunk_size'] = 128
                   config['model_config']['max_batch_size'] = 1
+              
+              # Patch conv_template roles to prevent "Role user is not supported" errors
+              if 'conv_template' in config:
+                  config['conv_template']['roles'] = {
+                      "user": "<|im_start|>user",
+                      "USER": "<|im_start|>user",
+                      "assistant": "<|im_start|>assistant",
+                      "ASSISTANT": "<|im_start|>assistant",
+                      "system": "<|im_start|>system",
+                      "SYSTEM": "<|im_start|>system"
+                  }
+                  config['conv_template']['role_templates'] = {
+                      "user": "{user_message}",
+                      "USER": "{user_message}",
+                      "assistant": "{assistant_message}",
+                      "ASSISTANT": "{assistant_message}",
+                      "system": "{system_message}",
+                      "SYSTEM": "{system_message}",
+                      "tool": "{tool_message}"
+                  }
+              
               with open(path, 'w') as f:
                   json.dump(config, f, indent=4)
               print('✓ Patched config successfully')
