@@ -68,7 +68,34 @@ private extension AppState {
 
     func loadModelsConfig(modelList: [AppConfig.ModelRecord]) {
         for model in modelList {
-            if model.modelPath != nil {
+            // Check if this model is actually built-in/prebuilt in the bundle
+            let prebuiltModelDir = Bundle.main.bundleURL.appending(path: Constants.prebuiltModelDir).appending(path: model.modelID)
+            let prebuiltConfigURL = prebuiltModelDir.appending(path: Constants.modelConfigFileName)
+            
+            if fileManager.fileExists(atPath: prebuiltConfigURL.path()) {
+                // Clear cache directory for this model to prevent conflicting data (e.g. old configs)
+                let cachedModelDir = cacheDirectoryURL.appending(path: model.modelID)
+                if fileManager.fileExists(atPath: cachedModelDir.path()) {
+                    try? fileManager.removeItem(at: cachedModelDir)
+                }
+                
+                // Force load as local model from bundle, overriding any cache/remote settings
+                if let modelConfig = loadModelConfig(
+                    modelConfigURL: prebuiltConfigURL,
+                    modelLib: model.modelLib,
+                    modelID: model.modelID,
+                    estimatedVRAMReq: model.estimatedVRAMReq
+                ) {
+                    addModelConfig(
+                        modelConfig: modelConfig,
+                        modelPath: model.modelID,
+                        modelURL: nil,
+                        isBuiltin: true
+                    )
+                } else {
+                    showAlert(message: "Failed to load prebuilt model: \(model.modelID)")
+                }
+            } else if model.modelPath != nil {
                 // local model
                 let modelDir = Bundle.main.bundleURL.appending(path: Constants.prebuiltModelDir).appending(path: model.modelPath!)
                 let modelConfigURL = modelDir.appending(path: Constants.modelConfigFileName)
