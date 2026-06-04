@@ -145,9 +145,6 @@ class RAGViewModel: ObservableObject {
     // ==========================================
     // MODULE: Tìm kiếm Database (Vecto + SQLite)
     // ==========================================
-    // ==========================================
-    // MODULE: Tìm kiếm Database (Vecto + SQLite)
-    // ==========================================
     func searchDatabaseOffline(question: String) -> [String] {
         // 1. Sinh vector từ câu hỏi
         let questionVector = generateVectorFromCoreML(text: question)

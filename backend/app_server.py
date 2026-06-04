@@ -32,9 +32,9 @@ embeddings = OllamaEmbeddings(model="bge-m3", base_url="http://localhost:11434")
 
 engine = MLCEngine(
     model=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"),
-    model_lib=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC-cpu.dll"),
-    mode="interactive",
-    device="cpu", # Máy đang kẹt CPU. Sau này nướng lại file DLL thì thay = "vulkan"
+    model_lib=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC-vulkan.dll"),
+    mode="server", # Dùng server mode để xử lý các request độc lập (stateless), tránh lỗi dính state "role user is not supported"
+    device="vulkan", # Chuyển sang dùng card rời GPU bằng Vulkan
 )
 
 # Template Front-end giao diện giống iMessage dành riêng cho iPhone Safari
@@ -498,16 +498,15 @@ def clean_up_note(content: str) -> str:
 
 def classify_and_tag_note(content: str) -> dict:
     system_prompt = (
-        "Bạn là trợ lý AI phân tích và phân loại ghi chú. Hãy đọc ghi chú dưới đây và phân loại nó vào một Thư mục (folder) phù hợp nhất "
-        "(ví dụ: Học tập, Công việc, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác) và gán các Thẻ (tags) liên quan (tối đa 3 thẻ).\n"
-        "Bạn bắt buộc phải trả về kết quả dưới định dạng JSON thô có cấu trúc chính xác sau:\n"
-        "{\n"
-        "  \"folder\": \"Tên thư mục\",\n"
-        "  \"tags\": [\"thẻ 1\", \"thẻ 2\"]\n"
-        "}\n"
-        "Chỉ trả về JSON thô, không thêm bất kỳ từ ngữ giải thích nào khác."
+        "Bạn là AI chuyên phân loại ghi chú thông minh.\n"
+        "Nhiệm vụ: Đọc ghi chú và phân loại vào MỘT trong các Thư mục (Học tập, Công việc, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác). "
+        "Sau đó tạo ra 1 đến 3 Thẻ (tags) ngắn gọn.\n\n"
+        "BẮT BUỘC trả về ĐÚNG định dạng JSON, không giải thích, không dùng markdown.\n"
+        "Ví dụ:\n"
+        "Input: Mua thịt, cá và rau muống lúc đi làm về\n"
+        "Output: {\"folder\": \"Gia đình\", \"tags\": [\"mua sắm\", \"thực phẩm\"]}"
     )
-    prompt = f"Nội dung ghi chú:\n{content}"
+    prompt = f"Input: {content}\nOutput:"
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt}
@@ -624,4 +623,4 @@ def delete_note_api(note_id: str):
     return {"status": "success"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

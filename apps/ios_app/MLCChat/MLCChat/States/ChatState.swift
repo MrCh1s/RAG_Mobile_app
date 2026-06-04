@@ -450,12 +450,14 @@ extension ChatState {
         Bạn là chuyên gia biên tập và định dạng văn bản. Nhiệm vụ của bạn là chuẩn hóa ghi chú thô của người dùng thành nội dung có cấu trúc rõ ràng, sửa lỗi chính tả, định dạng đẹp mắt bằng markdown (sử dụng gạch đầu dòng hoặc tiêu đề nếu cần). Hãy giữ nguyên ý nghĩa cốt lõi và thông tin chi tiết, không tự ý bịa đặt thông tin.
         """
         let messages = [
-            ChatCompletionMessage(role: .user, content: "\(systemPrompt)\n\n\(rawText)")
+            ChatCompletionMessage(role: .system, content: systemPrompt),
+            ChatCompletionMessage(role: .user, content: rawText)
         ]
         
         var replyText = ""
         for await res in await engine.chat.completions.create(
-            messages: messages
+            messages: messages,
+            temperature: 0.0
         ) {
             for choice in res.choices {
                 if let content = choice.delta.content {
@@ -469,22 +471,24 @@ extension ChatState {
     // AI helper to classify and tag note text
     func classifyAndTagNoteText(rawText: String) async -> (folder: String, tags: [String]) {
         let systemPrompt = """
-        Bạn là trợ lý AI phân tích và phân loại ghi chú. Hãy đọc ghi chú dưới đây và phân loại nó vào một Thư mục (folder) phù hợp nhất (ví dụ: Học tập, Công việc, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác) và gán các Thẻ (tags) liên quan (tối đa 3 thẻ).
-        Bạn bắt buộc phải trả về kết quả dưới định dạng JSON thô có cấu trúc chính xác sau:
-        {
-          "folder": "Tên thư mục",
-          "tags": ["thẻ 1", "thẻ 2"]
-        }
-        Chỉ trả về JSON thô, không thêm bất kỳ từ ngữ giải thích nào khác.
+        Bạn là AI chuyên phân loại ghi chú thông minh.
+        Nhiệm vụ: Đọc ghi chú và phân loại vào MỘT trong các Thư mục (Học tập, Công việc, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác). Sau đó tạo ra 1 đến 3 Thẻ (tags) ngắn gọn.
+
+        BẮT BUỘC trả về ĐÚNG định dạng JSON, không giải thích, không dùng markdown.
+        Ví dụ:
+        Input: Mua thịt, cá và rau muống lúc đi làm về
+        Output: {"folder": "Gia đình", "tags": ["mua sắm", "thực phẩm"]}
         """
         
         let messages = [
-            ChatCompletionMessage(role: .user, content: "\(systemPrompt)\n\nNội dung ghi chú:\n\(rawText)")
+            ChatCompletionMessage(role: .system, content: systemPrompt),
+            ChatCompletionMessage(role: .user, content: "Input: \(rawText)\nOutput:")
         ]
         
         var replyText = ""
         for await res in await engine.chat.completions.create(
-            messages: messages
+            messages: messages,
+            temperature: 0.0
         ) {
             for choice in res.choices {
                 if let content = choice.delta.content {

@@ -217,7 +217,7 @@ public class MLCEngine {
         {
             "model": "\(modelPath)",
             "model_lib": "system://\(modelLib)",
-            "mode": "interactive"
+            "mode": "server"
         }
         """
         jsonFFIEngine.reload(engineConfig)
