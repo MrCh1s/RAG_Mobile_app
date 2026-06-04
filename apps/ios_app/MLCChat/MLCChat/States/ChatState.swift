@@ -447,7 +447,7 @@ extension ChatState {
     // AI helper to clean up note text
     func cleanUpNoteText(rawText: String) async -> String {
         let systemPrompt = """
-        Bạn là chuyên gia biên tập và định dạng văn bản. Nhiệm vụ của bạn là chuẩn hóa ghi chú thô của người dùng thành nội dung có cấu trúc rõ ràng, sửa lỗi chính tả, định dạng đẹp mắt bằng markdown (sử dụng gạch đầu dòng hoặc tiêu đề nếu cần). Hãy giữ nguyên ý nghĩa cốt lõi và thông tin chi tiết, không tự ý bịa đặt thông tin.
+        Bạn là chuyên gia biên tập. Nhiệm vụ của bạn là chuẩn hóa và sửa lỗi chính tả ghi chú thô của người dùng. CHÚ Ý: Dựa vào ngữ cảnh tiếng Việt để sửa lỗi gõ vội/teencode (vd: 'onn' = 'ôn', 'hthành' = 'hoàn thành'). KHÔNG dịch các từ gõ sai sang tiếng Anh (vd: tuyệt đối không dịch 'onn' thành 'mở' hay 'on'). CHỈ in ra nội dung đã sửa dưới dạng 1 đoạn văn duy nhất. TUYỆT ĐỐI KHÔNG thêm bất kỳ câu giao tiếp nào (ví dụ: không nói 'Đây là...', 'Dưới đây là...'). KHÔNG sử dụng ký hiệu markdown block.
         """
         let messages = [
             ChatCompletionMessage(role: .system, content: systemPrompt),

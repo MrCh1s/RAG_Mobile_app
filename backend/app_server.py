@@ -1,11 +1,17 @@
 import sys
+import io
+
+# Ép hệ thống xuất chữ tiếng Việt (UTF-8) trên Terminal của Windows để không bị lỗi Unicode
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 import json
 import math
 import time
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, StreamingResponse
 import uvicorn
-from mlc_llm import MLCEngine
+import openai
 from langchain_ollama import OllamaEmbeddings
 from sqlite_notes import NoteManager
 import os
@@ -30,11 +36,10 @@ def cosine_similarity(v1, v2):
 print("\n[Máy Chủ] Đang khởi động lõi AI ngầm trên PC...")
 embeddings = OllamaEmbeddings(model="bge-m3", base_url="http://localhost:11434")
 
-engine = MLCEngine(
-    model=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"),
-    model_lib=os.path.join(BASE_DIR, "models", "mlc_models", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", "Qwen2.5-1.5B-Instruct-q4f16_1-MLC-vulkan.dll"),
-    mode="server", # Dùng server mode để xử lý các request độc lập (stateless), tránh lỗi dính state "role user is not supported"
-    device="vulkan", # Chuyển sang dùng card rời GPU bằng Vulkan
+# Chuyển sang dùng Ollama làm engine tạm thời vì MLC-LLM đang lỗi thư viện trên Windows
+engine = openai.OpenAI(
+    base_url="http://localhost:11434/v1",
+    api_key="ollama"
 )
 
 # Template Front-end giao diện giống iMessage dành riêng cho iPhone Safari
@@ -207,11 +212,11 @@ HTML_UI = """
         function renderFilters() {
             const folders = new Set(allNotes.map(n => n.folder_name).filter(Boolean));
             const filterBar = document.getElementById('folderFilters');
-            filterBar.innerHTML = `<div class="filter-chip \${activeFolder === 'all' ? 'active' : ''}" onclick="filterFolder('all')" id="filter-all">Tất cả</div>`;
+            filterBar.innerHTML = `<div class="filter-chip ${activeFolder === 'all' ? 'active' : ''}" onclick="filterFolder('all')" id="filter-all">Tất cả</div>`;
             
             folders.forEach(folder => {
                 const activeClass = activeFolder === folder ? 'active' : '';
-                filterBar.innerHTML += `<div class="filter-chip \${activeClass}" onclick="filterFolder('\${folder}')">\${folder}</div>`;
+                filterBar.innerHTML += `<div class="filter-chip ${activeClass}" onclick="filterFolder('${folder}')">${folder}</div>`;
             });
         }
 
@@ -249,7 +254,7 @@ HTML_UI = """
                     <div class="notes-group">
                         <div class="group-title">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                            \${folder} (\${notes.length})
+                            ${folder} (${notes.length})
                         </div>
                 `;
                 
@@ -257,15 +262,15 @@ HTML_UI = """
                     const tagChips = (note.tags || '').split(',')
                         .map(t => t.trim())
                         .filter(t => t.length > 0)
-                        .map(t => `<span class="tag-badge">\${t}</span>`)
+                        .map(t => `<span class="tag-badge">${t}</span>`)
                         .join('');
                         
                     groupHtml += `
                         <div class="note-card">
-                            <div class="note-content">\${note.content}</div>
+                            <div class="note-content">${note.content}</div>
                             <div class="note-meta">
-                                <div class="tags-container">\${tagChips}</div>
-                                <button class="delete-btn" onclick="deleteNote('\${note.note_id}')">Xóa</button>
+                                <div class="tags-container">${tagChips}</div>
+                                <button class="delete-btn" onclick="deleteNote('${note.note_id}')">Xóa</button>
                             </div>
                         </div>
                     `;
@@ -337,7 +342,7 @@ HTML_UI = """
         async function deleteNote(noteId) {
             if (!confirm('Bạn có chắc chắn muốn xóa ghi chú này?')) return;
             try {
-                const res = await fetch(`/notes/\${noteId}`, { method: 'DELETE' });
+                const res = await fetch(`/notes/${noteId}`, { method: 'DELETE' });
                 if (res.ok) {
                     await fetchNotes();
                 } else {
@@ -355,14 +360,14 @@ HTML_UI = """
             if(!question) return;
             
             const chat = document.getElementById('chat');
-            chat.innerHTML += `<div class="bubble user-bubble">\${question}</div>`;
+            chat.innerHTML += `<div class="bubble user-bubble">${question}</div>`;
             input.value = '';
             btn.disabled = true;
             
             const botId = 'bot-' + Date.now();
             chat.innerHTML += `
             <div style="align-self: flex-start;">
-                <div class="bubble bot-bubble" id="\${botId}">Đang truy vấn cơ sở dữ liệu và xử lý ngữ cảnh...</div>
+                <div class="bubble bot-bubble" id="${botId}">Đang truy vấn cơ sở dữ liệu và xử lý ngữ cảnh...</div>
             </div>`;
             chat.scrollTop = chat.scrollHeight;
 
@@ -446,7 +451,7 @@ def chat_stream(q: str):
         # Bắn chữ từng giọt sang iPhone qua cổng sse stream
         for response in engine.chat.completions.create(
             messages=history,
-            model="qwen",
+            model="qwen2.5:latest",
             temperature=0.0, 
             max_tokens=128,
             stream=True,
@@ -473,7 +478,7 @@ def generate_ai_response(messages, max_tokens=256):
     reply = ""
     for response in engine.chat.completions.create(
         messages=messages,
-        model="qwen",
+        model="qwen2.5:latest",
         temperature=0.0,
         max_tokens=max_tokens,
         stream=True,
@@ -485,9 +490,11 @@ def generate_ai_response(messages, max_tokens=256):
 
 def clean_up_note(content: str) -> str:
     system_prompt = (
-        "Bạn là chuyên gia biên tập và định dạng văn bản. Nhiệm vụ của bạn là chuẩn hóa ghi chú thô của người dùng thành nội dung "
-        "có cấu trúc rõ ràng, sửa lỗi chính tả, định dạng đẹp mắt bằng markdown (sử dụng gạch đầu dòng hoặc tiêu đề nếu cần). "
-        "Hãy giữ nguyên ý nghĩa cốt lõi và thông tin chi tiết, không tự ý bịa đặt thông tin."
+        "Bạn là chuyên gia biên tập. Nhiệm vụ của bạn là chuẩn hóa và sửa lỗi chính tả ghi chú thô của người dùng. "
+        "CHÚ Ý: Dựa vào ngữ cảnh tiếng Việt để sửa lỗi gõ vội/teencode (vd: 'onn' = 'ôn', 'hthành' = 'hoàn thành'). KHÔNG dịch các từ gõ sai sang tiếng Anh (vd: tuyệt đối không dịch 'onn' thành 'mở' hay 'on'). "
+        "CHỈ in ra nội dung đã sửa dưới dạng 1 đoạn văn duy nhất. "
+        "TUYỆT ĐỐI KHÔNG thêm bất kỳ câu giao tiếp nào (ví dụ: không nói 'Đây là...', 'Dưới đây là...'). "
+        "KHÔNG sử dụng ký hiệu markdown block."
     )
     prompt = f"Ghi chú thô:\n{content}"
     messages = [
