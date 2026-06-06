@@ -263,11 +263,13 @@ jobs:
               if 'conv_template' in config:
                   config['conv_template']['roles'] = {
                       "user": "<|im_start|>user",
-                      "assistant": "<|im_start|>assistant"
+                      "assistant": "<|im_start|>assistant",
+                      "system": "<|im_start|>system"
                   }
                   config['conv_template']['role_templates'] = {
                       "user": "{user_message}",
                       "assistant": "{assistant_message}",
+                      "system": "{system_message}",
                       "tool": "{tool_message}"
                   }
               
