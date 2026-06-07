@@ -436,11 +436,8 @@ private extension ChatState {
 
 extension ChatState {
     // AI helper to clean up note text
+    // NOTE: No engine.reset() needed - server mode processes each messages array independently
     func cleanUpNoteText(rawText: String) async -> String {
-        // Reset engine so no leftover conversation history causes role collision
-        let savedHistory = self.historyMessages
-        await engine.reset()
-        
         let systemPrompt = """
         Bạn là chuyên gia biên tập. Nhiệm vụ của bạn là chuẩn hóa và sửa lỗi chính tả ghi chú thô của người dùng. CHÚ Ý: Dựa vào ngữ cảnh tiếng Việt để sửa lỗi gõ vội/teencode (vd: 'onn' = 'ôn', 'hthành' = 'hoàn thành'). KHÔNG dịch các từ gõ sai sang tiếng Anh (vd: tuyệt đối không dịch 'onn' thành 'mở' hay 'on'). CHỈ in ra nội dung đã sửa dưới dạng 1 đoạn văn duy nhất. TUYỆT ĐỐI KHÔNG thêm bất kỳ câu giao tiếp nào (ví dụ: không nói 'Đây là...', 'Dưới đây là...'). KHÔNG sử dụng ký hiệu markdown block.
         """
@@ -460,20 +457,12 @@ extension ChatState {
                 }
             }
         }
-        
-        // Restore engine state by replaying the saved conversation
-        await engine.reset()
-        self.historyMessages = savedHistory
-        
         return replyText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // AI helper to classify and tag note text
+    // NOTE: No engine.reset() needed - server mode processes each messages array independently
     func classifyAndTagNoteText(rawText: String) async -> (folder: String, tags: [String]) {
-        // Reset engine so no leftover conversation history causes role collision
-        let savedHistory = self.historyMessages
-        await engine.reset()
-        
         let systemPrompt = """
         Bạn là AI chuyên phân loại ghi chú thông minh.
         Nhiệm vụ: Đọc ghi chú và phân loại vào MỘT trong các Thư mục (Học tập, Công việc, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác). Sau đó tạo ra 1 đến 3 Thẻ (tags) ngắn gọn.
@@ -500,10 +489,6 @@ extension ChatState {
                 }
             }
         }
-        
-        // Restore engine state
-        await engine.reset()
-        self.historyMessages = savedHistory
         
         replyText = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
         
