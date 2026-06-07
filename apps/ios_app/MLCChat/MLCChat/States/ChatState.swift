@@ -424,15 +424,6 @@ private extension ChatState {
             )
             debugLog("engine.reload completed successfully")
 
-            // run a simple prompt with empty content to warm up system prompt
-            // helps to start things before user start typing
-            debugLog("Warming up system prompt...")
-            for await _ in await engine.chat.completions.create(
-                messages: [ChatCompletionMessage(role: .user, content: "")],
-                max_tokens: 1
-            ) {}
-            debugLog("Warm up completed")
-
             // TODO(mlc-team) run a system message prefill
             DispatchQueue.main.async {
                 self.updateMessage(role: .assistant, message: "[System] Ready to chat")
