@@ -449,6 +449,7 @@ extension ChatState {
         var replyText = ""
         for await res in await engine.chat.completions.create(
             messages: messages,
+            stream_options: StreamOptions(include_usage: true),
             temperature: 0.0
         ) {
             for choice in res.choices {
@@ -481,6 +482,7 @@ extension ChatState {
         var replyText = ""
         for await res in await engine.chat.completions.create(
             messages: messages,
+            stream_options: StreamOptions(include_usage: true),
             temperature: 0.0
         ) {
             for choice in res.choices {
