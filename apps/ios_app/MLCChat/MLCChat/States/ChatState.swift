@@ -442,9 +442,9 @@ extension ChatState {
         let systemPrompt = """
         Bạn là chuyên gia biên tập. Nhiệm vụ của bạn là chuẩn hóa và sửa lỗi chính tả ghi chú thô của người dùng. CHÚ Ý: Dựa vào ngữ cảnh tiếng Việt để sửa lỗi gõ vội/teencode (vd: 'onn' = 'ôn', 'hthành' = 'hoàn thành'). KHÔNG dịch các từ gõ sai sang tiếng Anh (vd: tuyệt đối không dịch 'onn' thành 'mở' hay 'on'). CHỈ in ra nội dung đã sửa dưới dạng 1 đoạn văn duy nhất. TUYỆT ĐỐI KHÔNG thêm bất kỳ câu giao tiếp nào (ví dụ: không nói 'Đây là...', 'Dưới đây là...'). KHÔNG sử dụng ký hiệu markdown block.
         """
-        let combinedPrompt = "\(systemPrompt)\n\n\(rawText)"
         let messages = [
-            ChatCompletionMessage(role: .user, content: combinedPrompt)
+            ChatCompletionMessage(role: .system, content: systemPrompt),
+            ChatCompletionMessage(role: .user, content: rawText)
         ]
         
         var replyText = ""
@@ -476,9 +476,10 @@ extension ChatState {
         Output: {"folder": "Gia đình", "tags": ["mua sắm", "thực phẩm"]}
         """
         
-        let combinedPrompt = "\(systemPrompt)\n\nInput: \(rawText)\nOutput:"
+        let userPrompt = "Input: \(rawText)\nOutput:"
         let messages = [
-            ChatCompletionMessage(role: .user, content: combinedPrompt)
+            ChatCompletionMessage(role: .system, content: systemPrompt),
+            ChatCompletionMessage(role: .user, content: userPrompt)
         ]
         
         var replyText = ""
