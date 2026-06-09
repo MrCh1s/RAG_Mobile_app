@@ -90,30 +90,34 @@ jobs:
           du -sh mlc-llm/
 
       - name: Install mlc_llm Python package
+        if: steps.cache-mlc.outputs.cache-hit != 'true'
         run: |
           # Set up prebuilt TVM directory for CMake to link against installed mlc_ai wheel
           mkdir -p tvm_prebuilt/build
-          ln -s "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include
-          ln -s "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty
+          # Use -f (force) to overwrite existing symlinks in case of partial cache restore
+          ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include
+          ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty
 
           TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
-          ln -s "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib
-          ln -s "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib
 
           # Build MLC-LLM C++ libraries
+          # Use mkdir -p to avoid failure if directory already exists (e.g. from partial cache)
           cd mlc-llm
-          mkdir build && cd build
+          mkdir -p build
+          cd build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DTVM_HOME="$GITHUB_WORKSPACE/tvm_prebuilt" \
             -DUSE_METAL=ON
           cmake --build . --parallel 4
-          cd ..
+          cd "$GITHUB_WORKSPACE"
 
           # Install python package in editable mode
-          cd python
+          cd mlc-llm/python
           python3 -m pip install -e .
-          cd ../..
+          cd "$GITHUB_WORKSPACE"
 
           # Copy compiled dynamic library and symlink TVM runtimes
           cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
@@ -124,6 +128,15 @@ jobs:
 
           # Verify mlc_llm is importable
           python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
+
+      - name: Reinstall mlc_llm from cache (editable install)
+        if: steps.cache-mlc.outputs.cache-hit == 'true'
+        run: |
+          echo "Cache hit - reinstalling mlc_llm python package from cached source..."
+          cd mlc-llm/python
+          python3 -m pip install -e .
+          cd "$GITHUB_WORKSPACE"
+          python3 -c "import mlc_llm; print('mlc_llm OK (from cache):', mlc_llm.__file__)"
 
       - name: Setup TVM headers
         run: |
