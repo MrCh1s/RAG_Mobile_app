@@ -138,7 +138,6 @@ final class ChatState: ObservableObject {
         
         // RAG Logic: Fetch context from local database
         let notes = LocalDatabase.shared.fetchAllNotes()
-        // Increase limit to 50 notes for better context
         let relevantNotes = notes.prefix(50)
         
         // Format notes and ensure the total context isn't too huge to avoid OOM
@@ -175,14 +174,22 @@ final class ChatState: ObservableObject {
         appendMessage(role: .assistant, message: "")
         
         Task {
-            var finalPrompt = prompt
+            // FIX: Luôn đặt system message ở đầu, tách biệt hoàn toàn với user message.
+            // Mỗi lần gọi, cập nhật lại system message (index 0) để nội dung sổ tay luôn mới.
+            let systemMessage = ChatCompletionMessage(role: .system, content: systemPrompt)
             if self.historyMessages.isEmpty {
-                finalPrompt = "\(systemPrompt)\n\n\(prompt)"
+                // Lần chat đầu tiên: khởi tạo lịch sử với system message
+                self.historyMessages.append(systemMessage)
+            } else {
+                // Các lần tiếp theo: cập nhật system message (index 0) để context ghi chú luôn mới nhất
+                self.historyMessages[0] = systemMessage
             }
             
+            // Append đúng chuẩn: chỉ nội dung thuần túy của người dùng vào role .user
             self.historyMessages.append(
-                ChatCompletionMessage(role: .user, content: finalPrompt)
+                ChatCompletionMessage(role: .user, content: prompt)
             )
+            
             var finishReasonLength = false
             var finalUsageTextLabel = ""
 
@@ -218,33 +225,34 @@ final class ChatState: ObservableObject {
                 }
             }
 
-            // record history messages
+            // Record history messages
             if !self.streamingText.isEmpty {
                 self.historyMessages.append(
                     ChatCompletionMessage(role: .assistant, content: self.streamingText)
                 )
-                // stream text can be cleared
                 self.streamingText = ""
             } else {
+                // Xóa user message vừa append nếu AI không trả lời được
                 self.historyMessages.removeLast()
             }
 
-            // if we exceed history
-            // we can try to reduce the history and see if it can fit
-            if (finishReasonLength) {
-                let windowSize = self.historyMessages.count
-                assert(windowSize % 2 == 0)
-                let removeEnd = ((windowSize + 3) / 4) * 2
-                self.historyMessages.removeSubrange(0..<removeEnd)
+            // FIX: Khi cần cắt bớt lịch sử, xóa từ index 1 (KHÔNG xóa index 0 là system message).
+            // Luôn xóa theo cặp user+assistant để giữ cấu trúc hợp lệ.
+            if finishReasonLength {
+                // historyMessages = [system, user, assistant, user, assistant, ...]
+                // Số message hội thoại (không tính system) phải là số chẵn
+                let conversationCount = self.historyMessages.count - 1 // bỏ system
+                if conversationCount >= 4 {
+                    // Xóa cặp user+assistant cũ nhất (index 1 và 2)
+                    self.historyMessages.removeSubrange(1..<3)
+                }
             }
 
             if getModelChatState() == .generating {
                 let runtimStats = finalUsageTextLabel
-
                 DispatchQueue.main.async {
                     self.infoText = runtimStats
                     self.switchToReady()
-
                 }
             }
         }
