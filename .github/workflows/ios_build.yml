@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4   # keep v4 until v5 is stable for your use case
+        uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
@@ -36,53 +36,15 @@ jobs:
           xcode-version: 'latest-stable'
 
       - name: Setup Python
-        uses: actions/setup-python@v5   # ← bumped to v5
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'        # ← 3.11 avoids some 3.10 compat bugs with mlc
+          python-version: '3.11'
 
-      - name: Install Python dependencies and Build MLC-LLM from source
+      - name: Install Python dependencies
         run: |
           python3 -m pip install -U pip wheel pytest
-          
-          # Install mlc_ai_nightly_cpu
           python3 -m pip install \
             "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
-          
-          # Clone MLC-LLM repository recursively
-          git clone --depth 1 --recursive https://github.com/mlc-ai/mlc-llm.git
-          
-          # Set up prebuilt TVM directory for CMake to link against installed mlc_ai wheel
-          mkdir -p tvm_prebuilt/build
-          ln -s "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include
-          ln -s "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty
-          
-          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
-          ln -s "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib
-          ln -s "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib
-          
-          # Build MLC-LLM C++ libraries
-          cd mlc-llm
-          mkdir build && cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DTVM_HOME="$GITHUB_WORKSPACE/tvm_prebuilt" \
-            -DUSE_METAL=ON
-          cmake --build . --parallel 4
-          cd ..
-          
-          # Install python package in editable mode
-          cd python
-          python3 -m pip install -e .
-          cd ../..
-          
-          # Copy compiled dynamic library and symlink TVM runtimes to satisfy rpath requirements
-          cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
-          
-          # Verify mlc_llm is importable from the correct python
-          python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
       - name: Install Rust iOS target
         run: rustup target add aarch64-apple-ios
@@ -100,8 +62,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mlc-${{ matrix.platform }}-
 
-      # Model Bundle caching removed to force build from scratch
-
       - name: Clone MLC-LLM repository
         run: |
           if [ ! -d "mlc-llm" ] || [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/logging.h" ] || [ ! -f "mlc-llm/3rdparty/tvm/3rdparty/tvm-ffi/include/tvm/ffi/extra/module.h" ]; then
@@ -118,7 +78,7 @@ jobs:
           else
             echo "mlc-llm directory and TVM headers restored from cache."
           fi
-          
+
           if [ ! -f "mlc-llm/3rdparty/tvm/include/tvm/runtime/logging.h" ]; then
             echo "ERROR: TVM headers are missing in mlc-llm/3rdparty/tvm!"
             exit 1
@@ -128,6 +88,42 @@ jobs:
             exit 1
           fi
           du -sh mlc-llm/
+
+      - name: Install mlc_llm Python package
+        run: |
+          # Set up prebuilt TVM directory for CMake to link against installed mlc_ai wheel
+          mkdir -p tvm_prebuilt/build
+          ln -s "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include
+          ln -s "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty
+
+          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
+          ln -s "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib
+          ln -s "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib
+
+          # Build MLC-LLM C++ libraries
+          cd mlc-llm
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DTVM_HOME="$GITHUB_WORKSPACE/tvm_prebuilt" \
+            -DUSE_METAL=ON
+          cmake --build . --parallel 4
+          cd ..
+
+          # Install python package in editable mode
+          cd python
+          python3 -m pip install -e .
+          cd ../..
+
+          # Copy compiled dynamic library and symlink TVM runtimes
+          cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
+          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
+
+          # Verify mlc_llm is importable
+          python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
 
       - name: Setup TVM headers
         run: |
@@ -141,7 +137,7 @@ jobs:
             echo "Warning: TVM headers not found in mlc-llm"
           fi
           if [ ! -f "apps/ios_app/MLCSwift/tvm_home/include/tvm/runtime/logging.h" ]; then
-            echo "ERROR: TVM headers were not copied successfully! Check if mlc-llm/3rdparty/tvm is populated."
+            echo "ERROR: TVM headers were not copied successfully!"
             exit 1
           fi
 
@@ -180,7 +176,6 @@ jobs:
           echo "=== Python Debug Info ==="
           which python3
           python3 --version
-          python3 -c "import sys; print('Python executable:', sys.executable)"
           python3 -m pip list | grep -i mlc || echo "mlc not found in pip list!"
 
       - name: List build artifacts
@@ -203,23 +198,17 @@ jobs:
           set -o pipefail
           export MLC_LLM_SOURCE_DIR="$GITHUB_WORKSPACE/mlc-llm"
 
-          # Tìm đúng vị trí file config
           CONFIG_PATH="$GITHUB_WORKSPACE/apps/ios_app/MLCChat/mlc-package-config.json"
           if [ ! -f "$CONFIG_PATH" ]; then
-          # Thử ở apps/ios_app/ nếu không có trong MLCChat/
-          CONFIG_PATH="$GITHUB_WORKSPACE/apps/ios_app/mlc-package-config.json"
+            CONFIG_PATH="$GITHUB_WORKSPACE/apps/ios_app/mlc-package-config.json"
           fi
           echo "Using config: $CONFIG_PATH"
           cat "$CONFIG_PATH"
 
-          # Chạy từ thư mục chứa Xcode project
           cd "$GITHUB_WORKSPACE/apps/ios_app/MLCChat"
 
           echo "Python: $(which python3) ($(python3 --version))"
 
-          # Set JIT policy to REDO to force recompilation but capture any errors early.
-          # The RawStr error is triggered in tvm.tirx.build Metal codegen.
-          # Set JIT policy to REDO to force recompilation during packaging
           export MLC_JIT_POLICY=REDO
 
           python3 -m mlc_llm package \
@@ -242,7 +231,6 @@ jobs:
             head -20 bundle/mlc-app-config.json
           fi
 
-
       - name: Pre-compile Patch (memory config - MUST run before compile)
         shell: python
         run: |
@@ -264,22 +252,22 @@ jobs:
               config['model_config']['max_batch_size'] = 1
           with open(path, 'w') as f:
               json.dump(config, f, indent=4)
-          print(f'\u2713 Pre-compile memory patch done: context_window=2048, prefill_chunk=128')
+          print('\u2713 Pre-compile memory patch done: context_window=2048, prefill_chunk=128')
 
       - name: Compile real model library
         run: |
           DIST_LIB="$GITHUB_WORKSPACE/apps/ios_app/MLCChat/dist/lib"
           MODEL_LIB_DEST="$DIST_LIB/libmodel_iphone.a"
-          
+
           echo "Compiling optimized model library for iOS..."
           MODEL_PATH="$GITHUB_WORKSPACE/apps/ios_app/MLCChat/bundle/Qwen2.5-1.5B-Instruct-q4f16_1-MLC"
-          
+
           python3 -m mlc_llm compile "$MODEL_PATH" \
             --device metal \
             --host arm64-apple-ios \
             --system-lib-prefix model_iphone \
             --output "$DIST_LIB/libmodel_iphone.tar"
-            
+
           echo "Extracting objects and creating static library..."
           mkdir -p /tmp/model_obj
           tar -xf "$DIST_LIB/libmodel_iphone.tar" -C /tmp/model_obj
@@ -339,14 +327,12 @@ jobs:
               print(f.read())
           print('====================')
 
-
       - name: Verify Libraries
         run: |
           set -o pipefail
           echo "=== Verifying Libraries in apps/ios_app/MLCChat/dist/lib ==="
           ls -lh apps/ios_app/MLCChat/dist/lib/
 
-          # The newer build output uses libmlc_llm.a (not libmlc_llm_static.a)
           REQUIRED_LIBS=(
             "libmlc_llm.a"
             "libtvm_runtime.a"
@@ -360,32 +346,12 @@ jobs:
             fi
           done
 
-          # libmodel_iphone.a is produced by mlc_llm package; verify bundle instead
           if [ ! -f "apps/ios_app/MLCChat/bundle/mlc-app-config.json" ]; then
             echo "Error: bundle/mlc-app-config.json missing - package step likely failed"
             exit 1
           fi
           echo "✓ All required libraries are present."
           echo "✓ Model bundle exists."
-
-      - name: Generate and Compile CoreML Embedding Model
-        run: |
-          set -o pipefail
-          echo "Installing dependencies for CoreML..."
-          python3 -m pip install coremltools transformers torch
-          
-          echo "Running export script..."
-          python3 scripts/export_embedding_coreml.py
-          
-          echo "Compiling .mlpackage to .mlmodelc..."
-          xcrun coremlcompiler compile Vietnamese_SBERT_CoreML.mlpackage apps/ios_app/MLCChat/bundle/
-          
-          echo "Copying vocab.txt to bundle..."
-          cp scripts/vocab.txt apps/ios_app/MLCChat/bundle/
-          
-          echo "Verify compiled model and vocab:"
-          ls -lah apps/ios_app/MLCChat/bundle/Vietnamese_SBERT_CoreML.mlmodelc
-          ls -lah apps/ios_app/MLCChat/bundle/vocab.txt
 
       - name: Build Xcode project (${{ matrix.name }})
         run: |
@@ -395,7 +361,6 @@ jobs:
 
           # The Xcode CopyFiles build phase expects dist/bundle to exist.
           # mlc_llm package creates bundle/ (not dist/bundle/).
-          # Create dist/bundle as a symlink so Xcode can copy the model into the .app
           if [ -d "bundle" ] && [ ! -e "dist/bundle" ]; then
             mkdir -p dist
             ln -sf "$(pwd)/bundle" dist/bundle
@@ -425,10 +390,7 @@ jobs:
             exit 1
           }
 
-          # bundle/ is NOT deleted here - it is needed at runtime on device for JIT model loading
-          # (CopyFiles build phase already copied it into the .app bundle)
           rm -rf ~/.cache/mlc_llm
-
           echo "✓ Xcode build successful"
 
       - name: Create IPA package (${{ matrix.name }})
@@ -493,4 +455,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
