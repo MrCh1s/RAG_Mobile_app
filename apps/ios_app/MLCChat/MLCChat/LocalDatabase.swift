@@ -156,6 +156,81 @@ class LocalDatabase {
         return results
     }
 
+    // MARK: - Semantic Search (keyword-based relevance ranking)
+
+    /// Trả về tối đa `topK` ghi chú liên quan nhất với câu hỏi.
+    /// Thuật toán: tính điểm dựa trên số từ khớp (TF-IDF style) + boost khi trùng tags/folder.
+    func searchRelevantNotes(query: String, topK: Int = 8) -> [Note] {
+        let allNotes = fetchAllNotes()
+        guard !allNotes.isEmpty else { return [] }
+
+        // 1. Tách từ khóa từ câu hỏi (bỏ stop-words ngắn)
+        let stopWords: Set<String> = [
+            "là", "và", "của", "có", "không", "trong", "này", "cho", "với",
+            "về", "đã", "được", "thì", "mà", "còn", "khi", "để", "từ",
+            "tôi", "bạn", "cái", "những", "các", "một", "hai", "ba",
+            "the", "is", "a", "an", "of", "in", "to", "for", "on"
+        ]
+        let queryTokens = tokenize(text: query)
+            .filter { $0.count > 2 && !stopWords.contains($0) }
+        
+        guard !queryTokens.isEmpty else {
+            // Nếu không có từ khóa hữu ích, trả về topK ghi chú mới nhất
+            return Array(allNotes.prefix(topK))
+        }
+
+        // 2. Tính điểm từng ghi chú
+        var scored: [(note: Note, score: Double)] = allNotes.map { note in
+            let noteTokens = tokenize(text: note.content + " " + note.tags)
+            let noteTokenSet = Set(noteTokens)
+            let tagTokens = Set(tokenize(text: note.tags))
+            let folderTokens = Set(tokenize(text: note.folderName))
+
+            var score: Double = 0
+            for qToken in queryTokens {
+                // Điểm khớp nội dung (TF: đếm số lần xuất hiện, normalized)
+                let tf = noteTokens.filter { $0 == qToken }.count
+                if tf > 0 {
+                    let tfNorm = Double(tf) / Double(max(noteTokens.count, 1))
+                    score += tfNorm * 10.0
+                }
+                // Boost x2 nếu từ khóa xuất hiện trong tags
+                if tagTokens.contains(qToken) {
+                    score += 2.0
+                }
+                // Boost x1.5 nếu từ khóa khớp với folder
+                if folderTokens.contains(qToken) {
+                    score += 1.5
+                }
+                // Bonus nếu toàn bộ token set chứa từ khóa
+                if noteTokenSet.contains(qToken) && tf == 0 {
+                    score += 0.5
+                }
+            }
+            return (note: note, score: score)
+        }
+
+        // 3. Sắp xếp theo điểm giảm dần, lấy topK
+        scored.sort { $0.score > $1.score }
+        let topNotes = scored.filter { $0.score > 0 }.prefix(topK).map { $0.note }
+
+        // 4. Nếu không có ghi chú nào khớp, fallback sang topK ghi chú mới nhất
+        if topNotes.isEmpty {
+            return Array(allNotes.prefix(topK))
+        }
+        return Array(topNotes)
+    }
+
+    /// Tách văn bản thành mảng token chữ thường, loại bỏ dấu câu.
+    private func tokenize(text: String) -> [String] {
+        let lowercased = text.lowercased()
+        let allowed = CharacterSet.letters.union(.decimalDigits)
+        let cleaned = lowercased.unicodeScalars
+            .map { allowed.contains($0) ? Character($0) : Character(" ") }
+        let str = String(cleaned)
+        return str.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+    }
+
     // MARK: - Document Storage Logic
 
     func insertDocument(name: String) -> Int64 {

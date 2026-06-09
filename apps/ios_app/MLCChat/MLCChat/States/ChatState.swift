@@ -136,14 +136,13 @@ final class ChatState: ObservableObject {
         assert(isChattable)
         switchToGenerating()
         
-        // RAG Logic: Fetch context from local database
-        let notes = LocalDatabase.shared.fetchAllNotes()
-        let relevantNotes = notes.prefix(50)
+        // RAG Logic: Semantic search - chỉ lấy tối đa 8 ghi chú liên quan nhất với câu hỏi
+        let relevantNotes = LocalDatabase.shared.searchRelevantNotes(query: prompt, topK: 8)
         
-        // Format notes and ensure the total context isn't too huge to avoid OOM
+        // Format notes - giới hạn số ký tự để tránh OOM
         var context = ""
         var currentLength = 0
-        let maxContextChars = 4000 // Approximate safe limit for ~1000 tokens
+        let maxContextChars = 3000 // Chặt chặt hơn vì đã lọc từ trước
         
         for note in relevantNotes {
             let noteStr = "- \(note.createdAt): \(note.content)\n"
