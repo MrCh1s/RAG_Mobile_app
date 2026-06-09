@@ -1,0 +1,51 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "MLCEngineObjC-x86_64-unknown-windows-msvc-debug.module": ["<MLCEngineObjC-x86_64-unknown-windows-msvc-debug.module>"]
+  "MLCSwift-x86_64-unknown-windows-msvc-debug.module": ["<MLCSwift-x86_64-unknown-windows-msvc-debug.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "main": ["<MLCSwift-x86_64-unknown-windows-msvc-debug.module>"]
+  "test": ["<MLCSwift-x86_64-unknown-windows-msvc-debug.module>"]
+default: "main"
+nodes:
+  "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\ObjC/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\Swift/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+commands:
+  "<MLCSwift-x86_64-unknown-windows-msvc-debug.module>":
+    tool: phony
+    inputs: ["E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\Modules\\MLCSwift.swiftmodule"]
+    outputs: ["<MLCSwift-x86_64-unknown-windows-msvc-debug.module>"]
+
+  "C.MLCSwift-x86_64-unknown-windows-msvc-debug.module":
+    tool: shell
+    inputs: ["E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\Swift\\LLMEngine.swift","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\Swift\\OpenAIProtocol.swift","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\swift-version--4157CD1CCB3B76B.txt","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\ObjC\\include\\LLMEngine.h","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\sources"]
+    outputs: ["E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\Modules\\MLCSwift.swiftmodule"]
+    description: "Compiling Swift Module 'MLCSwift' (2 sources)"
+    args: ["E:\\Swift\\Toolchains\\6.3.1+Asserts\\usr\\bin\\swiftc.exe","-module-name","MLCSwift","-emit-dependencies","-emit-module","-emit-module-path","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\Modules\\MLCSwift.swiftmodule","-output-file-map","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\output-file-map.json","-parse-as-library","-incremental","@E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\sources","-I","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\Modules","-target","x86_64-unknown-windows-msvc","-incremental","-enable-batch-mode","-serialize-diagnostics","-Onone","-enable-testing","-j16","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-Xcc","-fmodule-map-file=E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCEngineObjC.build\\module.modulemap","-Xcc","-I","-Xcc","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\ObjC\\include","-module-cache-path","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\ModuleCache","-parseable-output","-parse-as-library","-static","-emit-objc-header","-emit-objc-header-path","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\include\\MLCSwift-Swift.h","-swift-version","5","-Xfrontend","-experimental-lazy-typecheck","-Xfrontend","-experimental-skip-all-function-bodies","-Xfrontend","-experimental-allow-module-with-compiler-errors","-Xfrontend","-empty-abi-descriptor","-sdk","E:\\Swift\\Platforms\\6.3.1\\Windows.platform\\Developer\\SDKs\\Windows.sdk\\","-libc","MD","-I","E:\\Swift\\Platforms\\6.3.1\\Windows.platform\\Developer\\Library\\XCTest-6.3.1\\usr\\lib\\swift\\windows","-I","E:\\Swift\\Platforms\\6.3.1\\Windows.platform\\Developer\\Library\\XCTest-6.3.1\\usr\\lib\\swift\\windows\\x86_64","-L","E:\\Swift\\Platforms\\6.3.1\\Windows.platform\\Developer\\Library\\XCTest-6.3.1\\usr\\lib\\swift\\windows\\x86_64","-I","E:\\Swift\\Platforms\\6.3.1\\Windows.platform\\Developer\\Library\\Testing-6.3.1\\usr\\lib\\swift\\windows","-L","E:\\Swift\\Platforms\\6.3.1\\Windows.platform\\Developer\\Library\\Testing-6.3.1\\usr\\lib\\swift\\windows\\x86_64","-use-ld=lld","-g","-use-ld=lld","-Xcc","-D_MT","-Xcc","-D_DLL","-Xcc","-Xclang","-Xcc","--dependent-lib=msvcrt","-Xcc","-gdwarf"]
+
+  "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\Swift\\LLMEngine.swift","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\Swift\\OpenAIProtocol.swift"]
+    outputs: ["E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\sources"]
+    description: "Write auxiliary file E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\sources"
+
+  "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\swift-version--4157CD1CCB3B76B.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","E:\\Swift\\Toolchains\\6.3.1+Asserts\\usr\\bin\\swiftc.exe"]
+    outputs: ["E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\swift-version--4157CD1CCB3B76B.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\swift-version--4157CD1CCB3B76B.txt"
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\ObjC/","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\Swift/","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Package.swift","E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

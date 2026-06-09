@@ -1,0 +1,4 @@
+module MLCEngineObjC {
+    umbrella "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\ObjC\\include"
+    export *
+}

@@ -1,0 +1,19 @@
+{
+  "": {
+    "swift-dependencies": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\primary.swiftdeps"
+  },
+  "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\Swift\\LLMEngine.swift": {
+    "dependencies": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\LLMEngine.d",
+    "object": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\LLMEngine.swift.o",
+    "swiftmodule": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\LLMEngine~partial.swiftmodule",
+    "swift-dependencies": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\LLMEngine.swiftdeps",
+    "diagnostics": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\LLMEngine.dia"
+  },
+  "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\Sources\\Swift\\OpenAIProtocol.swift": {
+    "dependencies": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\OpenAIProtocol.d",
+    "object": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\OpenAIProtocol.swift.o",
+    "swiftmodule": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\OpenAIProtocol~partial.swiftmodule",
+    "swift-dependencies": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\OpenAIProtocol.swiftdeps",
+    "diagnostics": "E:\\Qwen-MLC-workspace\\apps\\ios_app\\MLCSwift\\.build\\index-build\\x86_64-unknown-windows-msvc\\debug\\MLCSwift.build\\OpenAIProtocol.dia"
+  }
+}
