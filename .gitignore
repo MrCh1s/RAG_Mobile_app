@@ -18,3 +18,10 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Swift build cache
+apps/ios_app/MLCSwift/.build/
+apps/ios_app/MLCChat/.build/
+*.xcuserstate
+xcuserdata/
+DerivedData/
