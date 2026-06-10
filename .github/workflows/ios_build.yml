@@ -44,9 +44,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python3 -m pip install -U pip wheel pytest "numpy<2"
-          python3 -m pip install \
-            "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
+          python3 -m pip install -U pip wheel pytest "numpy<2" cloudpickle ml_dtypes packaging psutil scipy tornado typing_extensions
 
       - name: Install Rust iOS target
         run: rustup target add aarch64-apple-ios
@@ -100,92 +98,80 @@ jobs:
       - name: Install mlc_llm Python package
         run: |
           # Step 1: Clean up any compiled artifacts and stale installs
+          rm -rf mlc-llm/3rdparty/tvm/build mlc-llm/build tvm_prebuilt
           find mlc-llm -name "*.dylib" -not -path "*/3rdparty/*" -delete 2>/dev/null || true
           python3 -m pip uninstall mlc_llm mlc-ai-nightly-cpu apache-tvm-ffi -y 2>/dev/null || true
 
-          # Step 2: Force reinstall the TVM wheel alongside numpy<2 (numpy 2.x is ABI incompatible with TVM wheel)
-          python3 -m pip install --force-reinstall "numpy<2" \
-            "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
-
-          # Step 3: Locate TVM package directory in site-packages
-          # importlib.util.find_spec() finds the package path without executing __init__.py (prevents crash on old cached dylib loads)
-          TVM_PYTHON_PATH=$(python3 -c "import importlib.util,os,sys; spec=importlib.util.find_spec('tvm'); sys.exit(1) if not spec else print(os.path.dirname(spec.origin))")
-          echo "TVM package dir: $TVM_PYTHON_PATH"
-
-          # Verify the dylib files actually exist on disk (excluding debug symbols .dSYM)
-          TVM_LIB_RUNTIME=$(find "$TVM_PYTHON_PATH" -name "libtvm_runtime*.dylib" -not -path "*.dSYM*" | head -1)
-          TVM_LIB_COMPILER=$(find "$TVM_PYTHON_PATH" -name "libtvm_compiler*.dylib" -o -name "libtvm*.dylib" -not -path "*.dSYM*" | head -1)
-          echo "  libtvm_runtime: $TVM_LIB_RUNTIME"
-          echo "  libtvm_compiler: $TVM_LIB_COMPILER"
-          
-          if [ -z "$TVM_LIB_RUNTIME" ]; then
-            echo "ERROR: libtvm_runtime.dylib not found under $TVM_PYTHON_PATH"
-            exit 1
-          fi
-
-          # Step 4: Set up prebuilt TVM directory for CMake
-          mkdir -p tvm_prebuilt/build
-          ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include 2>/dev/null || true
-          ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty 2>/dev/null || true
-          ln -sf "$TVM_LIB_RUNTIME" tvm_prebuilt/build/libtvm_runtime.dylib 2>/dev/null || true
-          if [ -n "$TVM_LIB_COMPILER" ]; then
-            ln -sf "$TVM_LIB_COMPILER" tvm_prebuilt/build/libtvm.dylib 2>/dev/null || true
-          fi
-
-          # Step 5: Build MLC-LLM C++ libraries.
-          # We pass -DTVM_HOME to link against the TVM libraries we got from the wheel.
-          # USE_METAL=OFF: host Python packager does NOT need Metal GPU.
-          mkdir -p mlc-llm/build
-          cd mlc-llm/build
+          # Step 2: Build TVM from source (full compiler, CPU-only, no LLVM, no Metal)
+          mkdir -p mlc-llm/3rdparty/tvm/build
+          cd mlc-llm/3rdparty/tvm/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DTVM_HOME="$GITHUB_WORKSPACE/tvm_prebuilt" \
+            -DUSE_LLVM=OFF \
             -DUSE_METAL=OFF
           cmake --build . --parallel 4
           cd "$GITHUB_WORKSPACE"
 
-          # Step 6: Install mlc_llm Python package (no-deps: skip torch/transformers ~800MB)
-          # setup.py will automatically find libmlc_llm_module.dylib in mlc-llm/build and copy it.
+          # Step 3: Copy TVM C++ libraries into TVM Python source tree
+          TVM_BUILD_DIR="$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/build"
+          TVM_DYLIB=$(find "$TVM_BUILD_DIR" -name "libtvm.dylib" -not -path "*.dSYM*" | head -1)
+          TVM_RUNTIME_DYLIB=$(find "$TVM_BUILD_DIR" -name "libtvm_runtime.dylib" -not -path "*.dSYM*" | head -1)
+          TVM_FFI_DYLIB=$(find "$TVM_BUILD_DIR" -name "libtvm_ffi.dylib" -not -path "*.dSYM*" | head -1)
+
+          if [ -z "$TVM_DYLIB" ] || [ -z "$TVM_RUNTIME_DYLIB" ] || [ -z "$TVM_FFI_DYLIB" ]; then
+            echo "ERROR: Missing compiled TVM libraries in $TVM_BUILD_DIR"
+            find "$TVM_BUILD_DIR" -type f
+            exit 1
+          fi
+
+          mkdir -p "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python/tvm/lib"
+          cp "$TVM_DYLIB" "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python/tvm/lib/"
+          cp "$TVM_RUNTIME_DYLIB" "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python/tvm/lib/"
+
+          FFI_PY_DIR=$(find "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty/tvm-ffi/python" -name "tvm_ffi" -type d | head -1)
+          cp "$TVM_FFI_DYLIB" "$FFI_PY_DIR/"
+
+          # Step 4: Install tvm_ffi from source
+          cd "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty/tvm-ffi/python"
+          python3 -m pip install -e . --no-deps
+          cd "$GITHUB_WORKSPACE"
+
+          # Step 5: Build MLC-LLM C++ libraries linked against our source-built TVM.
+          mkdir -p mlc-llm/build
+          cd mlc-llm/build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DTVM_HOME="$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm" \
+            -DUSE_METAL=OFF
+          cmake --build . --parallel 4
+          cd "$GITHUB_WORKSPACE"
+
+          # Step 6: Install mlc_llm Python package
           cd mlc-llm/python
           python3 -m pip install -e . --no-deps
           cd "$GITHUB_WORKSPACE"
 
-          # Step 7: Copy newly compiled libmlc_llm_module.dylib only.
-          # DO NOT symlink any TVM dylibs here. This prevents dyld from finding and loading 
-          # a duplicate copy of TVM from mlc_llm/, which causes tvm::ffi::Error C++ registry conflict.
+          # Copy newly compiled libmlc_llm_module.dylib
           cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
 
-          # Expose package path to PYTHONPATH (rely on wheel for TVM)
-          echo "PYTHONPATH=$GITHUB_WORKSPACE/mlc-llm/python" >> $GITHUB_ENV
-          
-          # Expose the wheel's TVM library path to DYLD_LIBRARY_PATH so that dyld can resolve
-          # libmlc_llm_module.dylib's dependency on libtvm.dylib directly from the wheel without duplicate loading.
-          echo "DYLD_LIBRARY_PATH=$(dirname "$TVM_LIB_RUNTIME"):$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+          # Step 7: Expose PYTHONPATH to GITHUB_ENV
+          echo "PYTHONPATH=$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python:$GITHUB_WORKSPACE/mlc-llm/python" >> $GITHUB_ENV
 
           echo "=== Verify layout ==="
           ls -lh mlc-llm/python/mlc_llm/*.dylib 2>/dev/null
+          ls -lh mlc-llm/3rdparty/tvm/python/tvm/lib/*.dylib 2>/dev/null
           
           echo "=== RUNNING DIAGNOSTIC IMPORT TESTS ==="
-          export PYTHONPATH="$GITHUB_WORKSPACE/mlc-llm/python"
-          export DYLD_LIBRARY_PATH="$(dirname "$TVM_LIB_RUNTIME")"
+          export PYTHONPATH="$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python:$GITHUB_WORKSPACE/mlc-llm/python"
           
-          echo "Hiding mlc-llm/build folder to test isolated wheel imports..."
-          mv mlc-llm/build mlc-llm/build_hidden
+          echo "Test 1: Import tvm..."
+          python3 -c "import tvm; print('  [SUCCESS] tvm imported successfully. File:', tvm.__file__)"
           
-          echo "Test 1a: Import tvm (with build hidden)..."
-          python3 -c "import tvm; print('  [SUCCESS] tvm imported successfully (build hidden). File:', tvm.__file__)"
+          echo "Test 2: Import mlc_llm..."
+          python3 -c "import mlc_llm; print('  [SUCCESS] mlc_llm imported successfully. File:', mlc_llm.__file__)"
           
-          echo "Test 2a: Import mlc_llm (with build hidden)..."
-          python3 -c "import mlc_llm; print('  [SUCCESS] mlc_llm imported successfully (build hidden). File:', mlc_llm.__file__)"
-          
-          echo "Test 3a: Import tvm then mlc_llm (with build hidden)..."
-          python3 -c "import tvm; import mlc_llm; print('  [SUCCESS] both imported successfully (build hidden)!')"
-          
-          echo "Restoring mlc-llm/build folder..."
-          mv mlc-llm/build_hidden mlc-llm/build
-
-          echo "Test 1b: Import tvm (with build restored)..."
-          python3 -c "import tvm; print('  [SUCCESS] tvm imported successfully (build restored).')"
+          echo "Test 3: Import tvm then mlc_llm..."
+          python3 -c "import tvm; import mlc_llm; print('  [SUCCESS] both imported successfully!')"
           
           echo "Install complete."
 
