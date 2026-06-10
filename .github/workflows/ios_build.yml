@@ -151,7 +151,7 @@ jobs:
           cp "$TVM_FFI_DYLIB" "$FFI_PY_DIR/"
 
           # Step 4: Install tvm_ffi from source
-          cd "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty/tvm-ffi/python"
+          cd "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty/tvm-ffi"
           python3 -m pip install -e . --no-deps
           cd "$GITHUB_WORKSPACE"
 
