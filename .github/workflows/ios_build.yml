@@ -121,7 +121,7 @@ jobs:
 
           # Step 3: Copy TVM C++ libraries into TVM Python source tree
           TVM_BUILD_DIR="$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/build"
-          TVM_DYLIB=$(find "$TVM_BUILD_DIR" -name "libtvm.dylib" -not -path "*.dSYM*" | head -1)
+          TVM_DYLIB=$(find "$TVM_BUILD_DIR" -name "libtvm_compiler.dylib" -o -name "libtvm.dylib" -not -path "*.dSYM*" | head -1)
           TVM_RUNTIME_DYLIB=$(find "$TVM_BUILD_DIR" -name "libtvm_runtime.dylib" -not -path "*.dSYM*" | head -1)
           TVM_FFI_DYLIB=$(find "$TVM_BUILD_DIR" -name "libtvm_ffi.dylib" -not -path "*.dSYM*" | head -1)
 
@@ -131,9 +131,21 @@ jobs:
             exit 1
           fi
 
+          # Ensure a symlink libtvm.dylib exists in the TVM build directory pointing to the compiler library
+          TVM_DYLIB_DIR=$(dirname "$TVM_DYLIB")
+          TVM_DYLIB_NAME=$(basename "$TVM_DYLIB")
+          if [ "$TVM_DYLIB_NAME" = "libtvm_compiler.dylib" ] && [ ! -f "$TVM_DYLIB_DIR/libtvm.dylib" ]; then
+            ln -sf libtvm_compiler.dylib "$TVM_DYLIB_DIR/libtvm.dylib"
+          fi
+
           mkdir -p "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python/tvm/lib"
           cp "$TVM_DYLIB" "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python/tvm/lib/"
           cp "$TVM_RUNTIME_DYLIB" "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python/tvm/lib/"
+          
+          # Rename/symlink to libtvm.dylib in the python package folder as well
+          if [ "$TVM_DYLIB_NAME" = "libtvm_compiler.dylib" ]; then
+            ln -sf libtvm_compiler.dylib "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python/tvm/lib/libtvm.dylib"
+          fi
 
           FFI_PY_DIR=$(find "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty/tvm-ffi/python" -name "tvm_ffi" -type d | head -1)
           cp "$TVM_FFI_DYLIB" "$FFI_PY_DIR/"
