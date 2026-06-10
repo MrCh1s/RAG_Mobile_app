@@ -124,15 +124,16 @@ jobs:
           mkdir -p "$TVM_SRC_PYTHON/tvm/lib"
           ln -sf "$BUILD_DIR/libtvm_runtime.dylib" "$TVM_SRC_PYTHON/tvm/lib/libtvm_runtime.dylib" 2>/dev/null || true
 
-          # Copy mlc_llm module dylib and set up symlinks
-          cp "$BUILD_DIR/libmlc_llm_module.dylib" mlc-llm/python/mlc_llm/
-          ln -sf "$BUILD_DIR/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
-          ln -sf "$BUILD_DIR/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
-
           # Install mlc_llm Python package (no-deps: skip torch/transformers ~800MB)
+          # setup.py will automatically find libmlc_llm_module.dylib in mlc-llm/build and copy it.
           cd mlc-llm/python
           python3 -m pip install -e . --no-deps
           cd "$GITHUB_WORKSPACE"
+
+          # Set up TVM runtime symlinks inside mlc_llm package after installation
+          ln -sf "$BUILD_DIR/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
+          ln -sf "$BUILD_DIR/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
+
 
           # Use SOURCE TVM Python (same commit as cmake build) instead of wheel TVM.
           # This eliminates the ABI mismatch between libmlc_llm_module.dylib and Python TVM.
