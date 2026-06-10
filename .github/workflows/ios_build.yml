@@ -133,6 +133,10 @@ jobs:
         if: steps.cache-mlc.outputs.cache-hit == 'true'
         run: |
           echo "Cache hit - reinstalling mlc_llm python package from cached source..."
+          # Remove cached .dylib files from python package dir first.
+          # setup.py copies them from build/ -> python/mlc_llm/ during install.
+          # If they already exist (from cache), shutil.copy raises SameFileError.
+          rm -f mlc-llm/python/mlc_llm/*.dylib
           cd mlc-llm/python
           python3 -m pip install -e .
           cd "$GITHUB_WORKSPACE"
