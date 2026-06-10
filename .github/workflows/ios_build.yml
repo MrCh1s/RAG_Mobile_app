@@ -164,6 +164,20 @@ jobs:
 
           echo "=== Verify layout ==="
           ls -lh mlc-llm/python/mlc_llm/*.dylib 2>/dev/null
+          
+          echo "=== RUNNING DIAGNOSTIC IMPORT TESTS ==="
+          export PYTHONPATH="$GITHUB_WORKSPACE/mlc-llm/python"
+          export DYLD_LIBRARY_PATH="$(dirname "$TVM_LIB_RUNTIME")"
+          
+          echo "Test 1: Import tvm..."
+          python3 -c "import tvm; print('  [SUCCESS] tvm imported successfully. File:', tvm.__file__)"
+          
+          echo "Test 2: Import mlc_llm..."
+          python3 -c "import mlc_llm; print('  [SUCCESS] mlc_llm imported successfully. File:', mlc_llm.__file__)"
+          
+          echo "Test 3: Import tvm then mlc_llm..."
+          python3 -c "import tvm; import mlc_llm; print('  [SUCCESS] both imported successfully!')"
+          
           echo "Install complete."
 
 
