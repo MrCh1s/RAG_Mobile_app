@@ -90,61 +90,23 @@ jobs:
           du -sh mlc-llm/
 
       - name: Install mlc_llm Python package
-        if: steps.cache-mlc.outputs.cache-hit != 'true'
         run: |
-          # Set up prebuilt TVM directory for CMake to link against installed mlc_ai wheel
-          mkdir -p tvm_prebuilt/build
-          # Use -f (force) to overwrite existing symlinks in case of partial cache restore
-          ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include
-          ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty
+          # Uninstall any stale mlc_llm editable install from a previous runner reuse.
+          # A leftover .pth file can cause 'import tvm' to load old cached .dylib -> crash.
+          python3 -m pip uninstall mlc_llm -y 2>/dev/null || true
 
-          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib
-
-          # Build MLC-LLM C++ libraries
-          # Use mkdir -p to avoid failure if directory already exists (e.g. from partial cache)
-          cd mlc-llm
-          mkdir -p build
-          cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DTVM_HOME="$GITHUB_WORKSPACE/tvm_prebuilt" \
-            -DUSE_METAL=ON
-          cmake --build . --parallel 4
-          cd "$GITHUB_WORKSPACE"
-
-          # Install python package in editable mode
-          cd mlc-llm/python
-          python3 -m pip install -e .
-          cd "$GITHUB_WORKSPACE"
-
-          # Copy compiled dynamic library and symlink TVM runtimes
-          cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
-          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
-
-          # Verify mlc_llm is importable
-          python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
-
-      - name: Reinstall mlc_llm from cache (editable install)
-        if: steps.cache-mlc.outputs.cache-hit == 'true'
-        run: |
-          echo "Cache hit - rebuilding C++ against current TVM and setting PYTHONPATH..."
-          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
-
-          # Recreate tvm_prebuilt dir that cmake needs to link correctly
+          # Set up prebuilt TVM directory for CMake
           mkdir -p tvm_prebuilt/build
           ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include 2>/dev/null || true
           ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty 2>/dev/null || true
+
+          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
           ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib 2>/dev/null || true
           ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib 2>/dev/null || true
 
-          # Always recompile libmlc_llm_module.dylib against the CURRENT TVM nightly.
-          # cmake cache is restored, so this is fast (only re-links if TVM changed).
-          # This prevents ABI mismatch crashes when TVM nightly updates between runs.
+          # Build MLC-LLM C++ libraries.
+          # On cache hit: cmake detects no source changes -> fast incremental link only.
+          # On cache miss: full compilation.
           mkdir -p mlc-llm/build
           cd mlc-llm/build
           cmake .. \
@@ -154,16 +116,23 @@ jobs:
           cmake --build . --parallel 4
           cd "$GITHUB_WORKSPACE"
 
-          # Deploy fresh .dylib + TVM symlinks into the python package dir
+          # Remove stale .dylib from python package dir to avoid SameFileError in setup.py
           rm -f mlc-llm/python/mlc_llm/*.dylib
+
+          # Install mlc_llm with --no-deps: skips downloading torch/transformers (~800MB)
+          # since we only need mlc_llm itself for the iOS build pipeline.
+          cd mlc-llm/python
+          python3 -m pip install -e . --no-deps
+          cd "$GITHUB_WORKSPACE"
+
+          # Copy freshly compiled .dylib and recreate TVM runtime symlinks
           cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
           ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
           ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
           ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
 
-          # Use PYTHONPATH to expose the package - no pip install needed (fast, no dep downloads)
-          echo "PYTHONPATH=$GITHUB_WORKSPACE/mlc-llm/python" >> $GITHUB_ENV
-          PYTHONPATH="$GITHUB_WORKSPACE/mlc-llm/python" python3 -c "import mlc_llm; print('mlc_llm OK (from cache):', mlc_llm.__file__)"
+          python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
+
 
       - name: Setup TVM headers
         run: |
