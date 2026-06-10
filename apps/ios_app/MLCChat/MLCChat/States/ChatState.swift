@@ -480,13 +480,20 @@ extension ChatState {
         guard isChattable else { return ("Khác", []) }
         
         let systemPrompt = """
-        Bạn là AI chuyên phân loại ghi chú thông minh.
-        Nhiệm vụ: Đọc ghi chú và phân loại vào MỘT trong các Thư mục (Học tập, Công việc, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác). Sau đó tạo ra 1 đến 3 Thẻ (tags) ngắn gọn.
+        Bạn là AI phân loại ghi chú. Nhiệm vụ: Xếp ghi chú vào MỘT Thư mục phù hợp nhất (Công việc, Học tập, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác) và tạo 1-3 Thẻ (tags) ngắn gọn.
+        BẮT BUỘC trả về JSON hợp lệ, KHÔNG giải thích.
 
-        BẮT BUỘC trả về ĐÚNG định dạng JSON, không giải thích, không dùng markdown.
-        Ví dụ:
-        Input: Mua thịt, cá và rau muống lúc đi làm về
+        Ví dụ 1:
+        Input: Mai 9h sáng họp với team Marketing về dự án
+        Output: {"folder": "Công việc", "tags": ["họp", "marketing"]}
+        
+        Ví dụ 2:
+        Input: Mua thịt cá lúc đi làm về
         Output: {"folder": "Gia đình", "tags": ["mua sắm", "thực phẩm"]}
+
+        Ví dụ 3:
+        Input: Đóng tiền điện tháng 6
+        Output: {"folder": "Tài chính", "tags": ["hóa đơn"]}
         """
         
         let userPrompt = "Input: \(rawText)\nOutput:"
