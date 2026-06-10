@@ -480,36 +480,29 @@ extension ChatState {
         guard isChattable else { return ("Khác", []) }
         
         let systemPrompt = """
-        Bạn là AI phân loại ghi chú. Nhiệm vụ: Xếp ghi chú vào MỘT Thư mục phù hợp nhất (Công việc, Học tập, Gia đình, Tài chính, Ý tưởng, Sức khỏe, Khác) và tạo 1-3 Thẻ (tags) ngắn gọn.
-        BẮT BUỘC trả về JSON hợp lệ, KHÔNG giải thích.
+        Bạn là một hệ thống phân loại dữ liệu tự động. Nhiệm vụ của bạn là đọc ghi chú của người dùng và xếp nó vào MỘT VÀ CHỈ MỘT danh mục (folder) phù hợp nhất từ danh sách sau:
 
-        Ví dụ 1:
-        Input: Mai 9h sáng họp với team Marketing về dự án
+        1. "Công việc": Lịch họp, dự án, deadline, công tác, nhiệm vụ công ty.
+        2. "Học tập": Kiến thức lý thuyết, thuật toán, bài tập, ôn thi, nghiên cứu.
+        3. "Gia đình": Mua sắm đồ dùng, việc nhà, chăm sóc con cái, liên hoan.
+        4. "Tài chính": Chi tiêu, thanh toán hóa đơn eBanking, đóng tiền, nhắc nợ.
+        5. "Ý tưởng": Những ý tưởng bất chợt, dự định cá nhân, sáng tạo.
+        6. "Sức khỏe": Tập luyện thể thao, chạy bộ, chế độ ăn kiêng, khám bệnh.
+        7. "Khác": Nếu không thuộc bất kỳ nhóm nào ở trên.
+
+        QUY TẮC BẮT BUỘC:
+        - CHỈ output ra một chuỗi JSON chuẩn xác theo định dạng: {"folder": "TênDanhMục", "tags": ["tag1", "tag2"]}.
+        - KHÔNG giải thích, KHÔNG chào hỏi, KHÔNG thêm bất kỳ ký tự nào ngoài JSON.
+
+        Ví dụ:
+        Input: "Ngày mai 9h sáng họp với team Marketing về chiến dịch mới."
         Output: {"folder": "Công việc", "tags": ["họp", "marketing"]}
-        
-        Ví dụ 2:
-        Input: Mua thịt cá lúc đi làm về
-        Output: {"folder": "Gia đình", "tags": ["mua sắm", "thực phẩm"]}
 
-        Ví dụ 3:
-        Input: Đóng tiền điện tháng 6
-        Output: {"folder": "Tài chính", "tags": ["hóa đơn"]}
-        
-        Ví dụ 4:
-        Input: Nhớ ôn tập chương 3 môn Toán cao cấp
-        Output: {"folder": "Học tập", "tags": ["ôn thi", "toán"]}
-        
-        Ví dụ 5:
-        Input: Chiều chạy bộ 5km vòng quanh hồ
-        Output: {"folder": "Sức khỏe", "tags": ["chạy bộ", "thể thao"]}
-        
-        Ví dụ 6:
-        Input: App nhắc nhở kết hợp với AI phân loại tự động
-        Output: {"folder": "Ý tưởng", "tags": ["app", "ai"]}
-        
-        Ví dụ 7:
-        Input: Lời bài hát cơn mưa ngang qua
-        Output: {"folder": "Khác", "tags": ["âm nhạc", "lời bài hát"]}
+        Input: "Cần tìm hiểu cách tối ưu hàm tính khoảng cách bằng C++."
+        Output: {"folder": "Học tập", "tags": ["lập trình", "c++"]}
+
+        Input: "Nhớ nộp tiền điện và tiền nước tháng này."
+        Output: {"folder": "Tài chính", "tags": ["hóa đơn", "thanh toán"]}
         """
         
         let userPrompt = "Input: \(rawText)\nOutput:"
