@@ -60,9 +60,9 @@ jobs:
             apps/ios_app/build
             apps/ios_app/MLCSwift/tvm_home
             apps/ios_app/MLCChat/dist/lib
-          key: ${{ runner.os }}-mlc-${{ matrix.platform }}-${{ hashFiles('apps/ios_app/MLCChat/mlc-package-config.json', 'apps/ios_app/prepare_libs.sh') }}
+          key: ${{ runner.os }}-mlc-v2-${{ matrix.platform }}-${{ hashFiles('apps/ios_app/MLCChat/mlc-package-config.json', 'apps/ios_app/prepare_libs.sh') }}
           restore-keys: |
-            ${{ runner.os }}-mlc-${{ matrix.platform }}-
+            ${{ runner.os }}-mlc-v2-${{ matrix.platform }}-
 
       - name: Clone MLC-LLM repository
         run: |
@@ -128,16 +128,19 @@ jobs:
           [ -n "$TVM_LIB_COMPILER" ] && ln -sf "$TVM_LIB_COMPILER" tvm_prebuilt/build/libtvm.dylib 2>/dev/null || true
 
           # Step 5: Build MLC-LLM C++ libraries.
-          # On cache hit: cmake detects no source changes -> fast incremental link only.
-          # On cache miss: full compilation.
+          # USE_METAL=OFF: host build is only for python3 -m mlc_llm package (model download/
+          # organization). It does NOT need Metal GPU access. USE_METAL=ON causes
+          # libmlc_llm_module.dylib to crash with tvm::ffi::Error on headless CI (no GPU).
+          # Metal is compiled separately by prepare_libs.sh for the iOS static library target.
           mkdir -p mlc-llm/build
           cd mlc-llm/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DTVM_HOME="$GITHUB_WORKSPACE/tvm_prebuilt" \
-            -DUSE_METAL=ON
+            -DUSE_METAL=OFF
           cmake --build . --parallel 4
           cd "$GITHUB_WORKSPACE"
+
 
           # Step 6: Install mlc_llm with --no-deps (skips heavy deps like torch ~800MB)
           cd mlc-llm/python
