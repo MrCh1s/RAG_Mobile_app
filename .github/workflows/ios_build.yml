@@ -91,8 +91,12 @@ jobs:
 
       - name: Install mlc_llm Python package
         run: |
-          # Uninstall any stale mlc_llm editable install from a previous runner reuse.
-          # A leftover .pth file can cause 'import tvm' to load old cached .dylib -> crash.
+          # CRITICAL: Remove ALL compiled dylibs from cached mlc-llm BEFORE any python3 call.
+          # If the cache restores old libmlc_llm_module.dylib, macOS dyld may load it alongside
+          # the fresh libtvm_runtime.dylib from the wheel, causing two TVM versions in one
+          # process -> C++ registry conflict -> tvm::ffi::Error crash on 'import tvm'.
+          find mlc-llm -name "*.dylib" -not -path "*/3rdparty/*" -delete 2>/dev/null || true
+          find mlc-llm -name "*.so"    -not -path "*/3rdparty/*" -delete 2>/dev/null || true
           python3 -m pip uninstall mlc_llm -y 2>/dev/null || true
 
           # Set up prebuilt TVM directory for CMake
@@ -116,11 +120,7 @@ jobs:
           cmake --build . --parallel 4
           cd "$GITHUB_WORKSPACE"
 
-          # Remove stale .dylib from python package dir to avoid SameFileError in setup.py
-          rm -f mlc-llm/python/mlc_llm/*.dylib
-
-          # Install mlc_llm with --no-deps: skips downloading torch/transformers (~800MB)
-          # since we only need mlc_llm itself for the iOS build pipeline.
+          # Install mlc_llm with --no-deps (skips heavy deps like torch ~800MB)
           cd mlc-llm/python
           python3 -m pip install -e . --no-deps
           cd "$GITHUB_WORKSPACE"
@@ -132,6 +132,7 @@ jobs:
           ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
 
           python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
+
 
 
       - name: Setup TVM headers
