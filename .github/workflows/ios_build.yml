@@ -12,7 +12,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14  # Pin to macOS 14 (Sonoma) - macos-latest now = macOS 26 Tahoe beta
+                       # which breaks mlc_ai_nightly_cpu wheel (compiled for macosx_13_0_arm64)
+
     timeout-minutes: 180
 
     strategy:
