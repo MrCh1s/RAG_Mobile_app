@@ -169,14 +169,23 @@ jobs:
           export PYTHONPATH="$GITHUB_WORKSPACE/mlc-llm/python"
           export DYLD_LIBRARY_PATH="$(dirname "$TVM_LIB_RUNTIME")"
           
-          echo "Test 1: Import tvm..."
-          python3 -c "import tvm; print('  [SUCCESS] tvm imported successfully. File:', tvm.__file__)"
+          echo "Hiding mlc-llm/build folder to test isolated wheel imports..."
+          mv mlc-llm/build mlc-llm/build_hidden
           
-          echo "Test 2: Import mlc_llm..."
-          python3 -c "import mlc_llm; print('  [SUCCESS] mlc_llm imported successfully. File:', mlc_llm.__file__)"
+          echo "Test 1a: Import tvm (with build hidden)..."
+          python3 -c "import tvm; print('  [SUCCESS] tvm imported successfully (build hidden). File:', tvm.__file__)"
           
-          echo "Test 3: Import tvm then mlc_llm..."
-          python3 -c "import tvm; import mlc_llm; print('  [SUCCESS] both imported successfully!')"
+          echo "Test 2a: Import mlc_llm (with build hidden)..."
+          python3 -c "import mlc_llm; print('  [SUCCESS] mlc_llm imported successfully (build hidden). File:', mlc_llm.__file__)"
+          
+          echo "Test 3a: Import tvm then mlc_llm (with build hidden)..."
+          python3 -c "import tvm; import mlc_llm; print('  [SUCCESS] both imported successfully (build hidden)!')"
+          
+          echo "Restoring mlc-llm/build folder..."
+          mv mlc-llm/build_hidden mlc-llm/build
+
+          echo "Test 1b: Import tvm (with build restored)..."
+          python3 -c "import tvm; print('  [SUCCESS] tvm imported successfully (build restored).')"
           
           echo "Install complete."
 
