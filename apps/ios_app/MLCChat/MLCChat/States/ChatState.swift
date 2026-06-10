@@ -446,6 +446,9 @@ extension ChatState {
     func cleanUpNoteText(rawText: String) async -> String {
         guard isChattable else { return rawText }
         
+        DispatchQueue.main.async { self.switchToGenerating() }
+        defer { DispatchQueue.main.async { self.switchToReady() } }
+        
         let systemPrompt = """
         Bạn là chuyên gia biên tập. Nhiệm vụ của bạn là chuẩn hóa và sửa lỗi chính tả ghi chú thô của người dùng. CHÚ Ý: Dựa vào ngữ cảnh tiếng Việt để sửa lỗi gõ vội/teencode (vd: 'onn' = 'ôn', 'hthành' = 'hoàn thành'). KHÔNG dịch các từ gõ sai sang tiếng Anh (vd: tuyệt đối không dịch 'onn' thành 'mở' hay 'on'). CHỈ in ra nội dung đã sửa dưới dạng 1 đoạn văn duy nhất. TUYỆT ĐỐI KHÔNG thêm bất kỳ câu giao tiếp nào (ví dụ: không nói 'Đây là...', 'Dưới đây là...'). KHÔNG sử dụng ký hiệu markdown block.
         """
@@ -479,6 +482,9 @@ extension ChatState {
     // AI helper to classify and tag note text
     func classifyAndTagNoteText(rawText: String) async -> (folder: String, tags: [String]) {
         guard isChattable else { return ("Khác", []) }
+        
+        DispatchQueue.main.async { self.switchToGenerating() }
+        defer { DispatchQueue.main.async { self.switchToReady() } }
         
         let systemPrompt = """
         Bạn là một hệ thống phân loại dữ liệu tự động. Nhiệm vụ của bạn là đọc ghi chú của người dùng và xếp nó vào MỘT VÀ CHỈ MỘT danh mục (folder) phù hợp nhất từ danh sách sau:
