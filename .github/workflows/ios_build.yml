@@ -134,12 +134,21 @@ jobs:
         run: |
           echo "Cache hit - reinstalling mlc_llm python package from cached source..."
           # Remove cached .dylib files from python package dir first.
-          # setup.py copies them from build/ -> python/mlc_llm/ during install.
-          # If they already exist (from cache), shutil.copy raises SameFileError.
+          # setup.py copies libmlc_llm_module.dylib from build/ -> python/mlc_llm/.
+          # If the file already exists (from cache), shutil.copy raises SameFileError.
           rm -f mlc-llm/python/mlc_llm/*.dylib
           cd mlc-llm/python
           python3 -m pip install -e .
           cd "$GITHUB_WORKSPACE"
+
+          # CRITICAL: Recreate TVM symlinks that were deleted above.
+          # setup.py only copies libmlc_llm_module.dylib, not the TVM runtime symlinks.
+          # Without these, `import mlc_llm` crashes with tvm::ffi::Error (Abort trap 6).
+          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
+          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
+
           python3 -c "import mlc_llm; print('mlc_llm OK (from cache):', mlc_llm.__file__)"
 
       - name: Setup TVM headers
