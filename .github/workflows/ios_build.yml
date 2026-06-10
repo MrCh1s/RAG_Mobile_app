@@ -102,6 +102,8 @@ jobs:
           # Clean up stale installs and wheel TVM (incompatible with source-built mlc-llm)
           find mlc-llm -name "*.dylib" -not -path "*/3rdparty/*" -delete 2>/dev/null || true
           python3 -m pip uninstall mlc_llm mlc-ai-nightly-cpu apache-tvm-ffi -y 2>/dev/null || true
+          python3 -m pip install apache-tvm-ffi
+
 
           # Build mlc-llm C++ from source.
           # NOTE: cmake ignores -DTVM_HOME and always uses 3rdparty/tvm (commit b628d91).
