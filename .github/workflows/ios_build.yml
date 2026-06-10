@@ -156,13 +156,14 @@ jobs:
           cd "$GITHUB_WORKSPACE"
 
           # Step 4b: Parse and install mlc_llm dependencies except TVM/FFI packages
+          python3 -m pip install toml
           python3 <<'EOF'
-import os, tomllib, subprocess
+import os, toml, subprocess
 path = "mlc-llm/pyproject.toml"
 if not os.path.exists(path):
     path = "mlc-llm/python/pyproject.toml"
-with open(path, "rb") as f:
-    data = tomllib.load(f)
+with open(path, "r") as f:
+    data = toml.load(f)
 dependencies = data.get("project", {}).get("dependencies", [])
 filtered_deps = []
 for dep in dependencies:
