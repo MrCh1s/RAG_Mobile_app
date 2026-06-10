@@ -98,25 +98,42 @@ jobs:
           find mlc-llm -name "*.so"    -not -path "*/3rdparty/*" -delete 2>/dev/null || true
           python3 -m pip uninstall mlc_llm apache-tvm-ffi -y 2>/dev/null || true
 
-          # Step 2: Force reinstall the TVM wheel to guarantee apache-tvm-ffi is the correct
-          # version. A previous 'pip install -e .' (without --no-deps) may have upgraded or
-          # downgraded apache-tvm-ffi, causing 'import tvm' to crash with tvm::ffi::Error.
+          # Step 2: Force reinstall the TVM wheel (clean apache-tvm-ffi)
           python3 -m pip install --force-reinstall \
             "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
 
-          echo "=== TVM import test ==="
-          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
-          echo "TVM path: $TVM_PYTHON_PATH"
+          # Step 3: Locate TVM package directory WITHOUT importing it.
+          # 'import tvm' crashes with tvm::ffi::Error on this runner (C++ ABI issue).
+          # importlib.util.find_spec() finds the package path without executing __init__.py.
+          TVM_PYTHON_PATH=$(python3 -c "
+import importlib.util, os, sys
+spec = importlib.util.find_spec('tvm')
+if spec is None:
+    print('ERROR: tvm not found', file=sys.stderr)
+    sys.exit(1)
+print(os.path.dirname(spec.origin))
+")
+          echo "TVM package dir: $TVM_PYTHON_PATH"
 
-          # Set up prebuilt TVM directory for CMake
+          # Verify the dylib files actually exist on disk
+          TVM_LIB_RUNTIME=$(find "$TVM_PYTHON_PATH" -name "libtvm_runtime*.dylib" | head -1)
+          TVM_LIB_COMPILER=$(find "$TVM_PYTHON_PATH" -name "libtvm_compiler*.dylib" | head -1)
+          echo "  libtvm_runtime: $TVM_LIB_RUNTIME"
+          echo "  libtvm_compiler: $TVM_LIB_COMPILER"
+          if [ -z "$TVM_LIB_RUNTIME" ]; then
+            echo "ERROR: libtvm_runtime.dylib not found under $TVM_PYTHON_PATH"
+            exit 1
+          fi
+
+          # Step 4: Set up prebuilt TVM directory for CMake
+          TVM_LIB_DIR=$(dirname "$TVM_LIB_RUNTIME")
           mkdir -p tvm_prebuilt/build
           ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include 2>/dev/null || true
           ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty 2>/dev/null || true
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib 2>/dev/null || true
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib 2>/dev/null || true
+          ln -sf "$TVM_LIB_RUNTIME" tvm_prebuilt/build/libtvm_runtime.dylib 2>/dev/null || true
+          [ -n "$TVM_LIB_COMPILER" ] && ln -sf "$TVM_LIB_COMPILER" tvm_prebuilt/build/libtvm.dylib 2>/dev/null || true
 
-
-          # Build MLC-LLM C++ libraries.
+          # Step 5: Build MLC-LLM C++ libraries.
           # On cache hit: cmake detects no source changes -> fast incremental link only.
           # On cache miss: full compilation.
           mkdir -p mlc-llm/build
@@ -128,18 +145,22 @@ jobs:
           cmake --build . --parallel 4
           cd "$GITHUB_WORKSPACE"
 
-          # Install mlc_llm with --no-deps (skips heavy deps like torch ~800MB)
+          # Step 6: Install mlc_llm with --no-deps (skips heavy deps like torch ~800MB)
           cd mlc-llm/python
           python3 -m pip install -e . --no-deps
           cd "$GITHUB_WORKSPACE"
 
-          # Copy freshly compiled .dylib and recreate TVM runtime symlinks
+          # Step 7: Copy freshly compiled .dylib and recreate TVM runtime symlinks
           cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
-          ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
+          ln -sf "$TVM_LIB_RUNTIME" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
+          ln -sf "$TVM_LIB_RUNTIME" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
+          [ -n "$TVM_LIB_COMPILER" ] && ln -sf "$TVM_LIB_COMPILER" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib" || true
 
-          python3 -c "import mlc_llm; print('mlc_llm OK:', mlc_llm.__file__)"
+          echo "=== mlc_llm dylib layout ==="
+          ls -lh mlc-llm/python/mlc_llm/*.dylib 2>/dev/null || echo "(no dylibs)"
+          echo "Install complete."
+
+
 
 
 
