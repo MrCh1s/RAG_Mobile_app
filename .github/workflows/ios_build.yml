@@ -93,22 +93,28 @@ jobs:
 
       - name: Install mlc_llm Python package
         run: |
-          # CRITICAL: Remove ALL compiled dylibs from cached mlc-llm BEFORE any python3 call.
-          # If the cache restores old libmlc_llm_module.dylib, macOS dyld may load it alongside
-          # the fresh libtvm_runtime.dylib from the wheel, causing two TVM versions in one
-          # process -> C++ registry conflict -> tvm::ffi::Error crash on 'import tvm'.
+          # Step 1: Clean up any compiled artifacts and stale installs
           find mlc-llm -name "*.dylib" -not -path "*/3rdparty/*" -delete 2>/dev/null || true
           find mlc-llm -name "*.so"    -not -path "*/3rdparty/*" -delete 2>/dev/null || true
-          python3 -m pip uninstall mlc_llm -y 2>/dev/null || true
+          python3 -m pip uninstall mlc_llm apache-tvm-ffi -y 2>/dev/null || true
+
+          # Step 2: Force reinstall the TVM wheel to guarantee apache-tvm-ffi is the correct
+          # version. A previous 'pip install -e .' (without --no-deps) may have upgraded or
+          # downgraded apache-tvm-ffi, causing 'import tvm' to crash with tvm::ffi::Error.
+          python3 -m pip install --force-reinstall \
+            "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
+
+          echo "=== TVM import test ==="
+          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
+          echo "TVM path: $TVM_PYTHON_PATH"
 
           # Set up prebuilt TVM directory for CMake
           mkdir -p tvm_prebuilt/build
           ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/include" tvm_prebuilt/include 2>/dev/null || true
           ln -sf "$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/3rdparty" tvm_prebuilt/3rdparty 2>/dev/null || true
-
-          TVM_PYTHON_PATH=$(python3 -c "import tvm, os; print(os.path.dirname(tvm.__file__))")
           ln -sf "$TVM_PYTHON_PATH/lib/libtvm_runtime.dylib" tvm_prebuilt/build/libtvm_runtime.dylib 2>/dev/null || true
           ln -sf "$TVM_PYTHON_PATH/lib/libtvm_compiler.dylib" tvm_prebuilt/build/libtvm.dylib 2>/dev/null || true
+
 
           # Build MLC-LLM C++ libraries.
           # On cache hit: cmake detects no source changes -> fast incremental link only.
