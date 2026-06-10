@@ -460,7 +460,8 @@ extension ChatState {
         
         for await res in await engine.chat.completions.create(
             messages: messages,
-            stream_options: StreamOptions(include_usage: true)
+            stream_options: StreamOptions(include_usage: true),
+            temperature: 0.1
         ) {
             for choice in res.choices {
                 if let content = choice.delta.content {
@@ -517,7 +518,8 @@ extension ChatState {
         
         for await res in await engine.chat.completions.create(
             messages: messages,
-            stream_options: StreamOptions(include_usage: true)
+            stream_options: StreamOptions(include_usage: true),
+            temperature: 0.1
         ) {
             for choice in res.choices {
                 if let content = choice.delta.content {
