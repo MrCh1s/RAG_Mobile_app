@@ -117,18 +117,27 @@ jobs:
           BUILD_DIR="$GITHUB_WORKSPACE/mlc-llm/build"
           TVM_SRC_PYTHON="$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python"
 
-          # Dynamically locate libtvm_runtime.dylib in the build dir, excluding debug symbol files (.dSYM)
-          TVM_LIB_PATH=$(find "$BUILD_DIR" -name "libtvm_runtime.dylib" -not -path "*.dSYM*" | head -n 1)
-          if [ -z "$TVM_LIB_PATH" ]; then
-            echo "ERROR: libtvm_runtime.dylib not found anywhere under $BUILD_DIR"
+          # Dynamically locate libtvm_runtime.dylib and libtvm.dylib in the build dir, excluding debug symbol files (.dSYM)
+          TVM_RUNTIME_PATH=$(find "$BUILD_DIR" -name "libtvm_runtime.dylib" -not -path "*.dSYM*" | head -n 1)
+          TVM_COMPILER_PATH=$(find "$BUILD_DIR" -name "libtvm.dylib" -not -path "*.dSYM*" | head -n 1)
+
+          if [ -z "$TVM_RUNTIME_PATH" ] && [ -z "$TVM_COMPILER_PATH" ]; then
+            echo "ERROR: No TVM libraries found anywhere under $BUILD_DIR"
             find "$BUILD_DIR" -type f
             exit 1
           fi
-          echo "Found libtvm_runtime.dylib at: $TVM_LIB_PATH"
 
-          # Ensure TVM Python source can find it
           mkdir -p "$TVM_SRC_PYTHON/tvm/lib"
-          ln -sf "$TVM_LIB_PATH" "$TVM_SRC_PYTHON/tvm/lib/libtvm_runtime.dylib"
+
+          if [ -n "$TVM_COMPILER_PATH" ]; then
+            echo "Found libtvm.dylib at: $TVM_COMPILER_PATH"
+            ln -sf "$TVM_COMPILER_PATH" "$TVM_SRC_PYTHON/tvm/lib/libtvm.dylib"
+          fi
+
+          if [ -n "$TVM_RUNTIME_PATH" ]; then
+            echo "Found libtvm_runtime.dylib at: $TVM_RUNTIME_PATH"
+            ln -sf "$TVM_RUNTIME_PATH" "$TVM_SRC_PYTHON/tvm/lib/libtvm_runtime.dylib"
+          fi
 
           # Install mlc_llm Python package (no-deps: skip torch/transformers ~800MB)
           # setup.py will automatically find libmlc_llm_module.dylib in mlc-llm/build and copy it.
@@ -136,14 +145,26 @@ jobs:
           python3 -m pip install -e . --no-deps
           cd "$GITHUB_WORKSPACE"
 
-          # Set up TVM runtime symlinks inside mlc_llm package after installation
-          ln -sf "$TVM_LIB_PATH" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
-          ln -sf "$TVM_LIB_PATH" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
+          # Set up TVM runtime symlinks inside mlc_llm package after installation.
+          # If libtvm.dylib is available, also symlink it to libtvm_compiler.dylib.
+          if [ -n "$TVM_RUNTIME_PATH" ]; then
+            ln -sf "$TVM_RUNTIME_PATH" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
+            ln -sf "$TVM_RUNTIME_PATH" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
+          fi
+          if [ -n "$TVM_COMPILER_PATH" ]; then
+            ln -sf "$TVM_COMPILER_PATH" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
+          fi
 
           # Use SOURCE TVM Python (same commit as cmake build) instead of wheel TVM.
           # This eliminates the ABI mismatch between libmlc_llm_module.dylib and Python TVM.
           echo "PYTHONPATH=$TVM_SRC_PYTHON:$GITHUB_WORKSPACE/mlc-llm/python" >> $GITHUB_ENV
-          echo "TVM_LIBRARY_PATH=$(dirname "$TVM_LIB_PATH")" >> $GITHUB_ENV
+          
+          # Prioritize the compiler library directory if available
+          if [ -n "$TVM_COMPILER_PATH" ]; then
+            echo "TVM_LIBRARY_PATH=$(dirname "$TVM_COMPILER_PATH")" >> $GITHUB_ENV
+          else
+            echo "TVM_LIBRARY_PATH=$(dirname "$TVM_RUNTIME_PATH")" >> $GITHUB_ENV
+          fi
 
           echo "=== Verify layout ==="
           ls -lh mlc-llm/python/mlc_llm/*.dylib 2>/dev/null
