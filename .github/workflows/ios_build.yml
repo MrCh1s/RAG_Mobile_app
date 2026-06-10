@@ -117,8 +117,8 @@ jobs:
           BUILD_DIR="$GITHUB_WORKSPACE/mlc-llm/build"
           TVM_SRC_PYTHON="$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm/python"
 
-          # Dynamically locate libtvm_runtime.dylib in the build dir
-          TVM_LIB_PATH=$(find "$BUILD_DIR" -name "libtvm_runtime.dylib" | head -n 1)
+          # Dynamically locate libtvm_runtime.dylib in the build dir, excluding debug symbol files (.dSYM)
+          TVM_LIB_PATH=$(find "$BUILD_DIR" -name "libtvm_runtime.dylib" -not -path "*.dSYM*" | head -n 1)
           if [ -z "$TVM_LIB_PATH" ]; then
             echo "ERROR: libtvm_runtime.dylib not found anywhere under $BUILD_DIR"
             find "$BUILD_DIR" -type f
