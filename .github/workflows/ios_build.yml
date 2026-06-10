@@ -44,7 +44,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python3 -m pip install -U pip wheel pytest
+          python3 -m pip install -U pip wheel pytest "numpy<2"
           python3 -m pip install \
             "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
 
@@ -103,8 +103,8 @@ jobs:
           find mlc-llm -name "*.dylib" -not -path "*/3rdparty/*" -delete 2>/dev/null || true
           python3 -m pip uninstall mlc_llm mlc-ai-nightly-cpu apache-tvm-ffi -y 2>/dev/null || true
 
-          # Step 2: Force reinstall the TVM wheel (contains full compiler library)
-          python3 -m pip install --force-reinstall \
+          # Step 2: Force reinstall the TVM wheel alongside numpy<2 (numpy 2.x is ABI incompatible with TVM wheel)
+          python3 -m pip install --force-reinstall "numpy<2" \
             "https://github.com/mlc-ai/package/releases/download/v0.9.dev0/mlc_ai_nightly_cpu-0.20.dev1070-py3-none-macosx_13_0_arm64.whl"
 
           # Step 3: Locate TVM package directory in site-packages
