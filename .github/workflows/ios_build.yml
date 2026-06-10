@@ -150,16 +150,17 @@ jobs:
           python3 -m pip install -e . --no-deps
           cd "$GITHUB_WORKSPACE"
 
-          # Step 7: Symlink newly compiled dylib and recreate TVM runtime symlinks inside mlc_llm package
+          # Step 7: Copy newly compiled libmlc_llm_module.dylib only.
+          # DO NOT symlink any TVM dylibs here. This prevents dyld from finding and loading 
+          # a duplicate copy of TVM from mlc_llm/, which causes tvm::ffi::Error C++ registry conflict.
           cp mlc-llm/build/libmlc_llm_module.dylib mlc-llm/python/mlc_llm/
-          ln -sf "$TVM_LIB_RUNTIME" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_runtime.dylib"
-          ln -sf "$TVM_LIB_RUNTIME" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm.dylib"
-          if [ -n "$TVM_LIB_COMPILER" ]; then
-            ln -sf "$TVM_LIB_COMPILER" "$GITHUB_WORKSPACE/mlc-llm/python/mlc_llm/libtvm_compiler.dylib"
-          fi
 
           # Expose package path to PYTHONPATH (rely on wheel for TVM)
           echo "PYTHONPATH=$GITHUB_WORKSPACE/mlc-llm/python" >> $GITHUB_ENV
+          
+          # Expose the wheel's TVM library path to DYLD_LIBRARY_PATH so that dyld can resolve
+          # libmlc_llm_module.dylib's dependency on libtvm.dylib directly from the wheel without duplicate loading.
+          echo "DYLD_LIBRARY_PATH=$(dirname "$TVM_LIB_RUNTIME"):$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
           echo "=== Verify layout ==="
           ls -lh mlc-llm/python/mlc_llm/*.dylib 2>/dev/null
