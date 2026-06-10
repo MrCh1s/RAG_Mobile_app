@@ -105,15 +105,9 @@ jobs:
           # Step 3: Locate TVM package directory WITHOUT importing it.
           # 'import tvm' crashes with tvm::ffi::Error on this runner (C++ ABI issue).
           # importlib.util.find_spec() finds the package path without executing __init__.py.
-          TVM_PYTHON_PATH=$(python3 -c "
-import importlib.util, os, sys
-spec = importlib.util.find_spec('tvm')
-if spec is None:
-    print('ERROR: tvm not found', file=sys.stderr)
-    sys.exit(1)
-print(os.path.dirname(spec.origin))
-")
+          TVM_PYTHON_PATH=$(python3 -c "import importlib.util,os,sys; spec=importlib.util.find_spec('tvm'); sys.exit(1) if not spec else print(os.path.dirname(spec.origin))")
           echo "TVM package dir: $TVM_PYTHON_PATH"
+
 
           # Verify the dylib files actually exist on disk
           TVM_LIB_RUNTIME=$(find "$TVM_PYTHON_PATH" -name "libtvm_runtime*.dylib" | head -1)
