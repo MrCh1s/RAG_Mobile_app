@@ -494,6 +494,22 @@ extension ChatState {
         Ví dụ 3:
         Input: Đóng tiền điện tháng 6
         Output: {"folder": "Tài chính", "tags": ["hóa đơn"]}
+        
+        Ví dụ 4:
+        Input: Nhớ ôn tập chương 3 môn Toán cao cấp
+        Output: {"folder": "Học tập", "tags": ["ôn thi", "toán"]}
+        
+        Ví dụ 5:
+        Input: Chiều chạy bộ 5km vòng quanh hồ
+        Output: {"folder": "Sức khỏe", "tags": ["chạy bộ", "thể thao"]}
+        
+        Ví dụ 6:
+        Input: App nhắc nhở kết hợp với AI phân loại tự động
+        Output: {"folder": "Ý tưởng", "tags": ["app", "ai"]}
+        
+        Ví dụ 7:
+        Input: Lời bài hát cơn mưa ngang qua
+        Output: {"folder": "Khác", "tags": ["âm nhạc", "lời bài hát"]}
         """
         
         let userPrompt = "Input: \(rawText)\nOutput:"
