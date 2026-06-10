@@ -102,12 +102,19 @@ jobs:
           find mlc-llm -name "*.dylib" -not -path "*/3rdparty/*" -delete 2>/dev/null || true
           python3 -m pip uninstall mlc_llm mlc-ai-nightly-cpu apache-tvm-ffi -y 2>/dev/null || true
 
-          # Step 2: Build TVM from source (full compiler, CPU-only, no LLVM, no Metal)
+          # Step 2: Build TVM from source (full compiler, CPU-only, with LLVM, no Metal)
+          LLVM_CONFIG="/opt/homebrew/opt/llvm/bin/llvm-config"
+          if [ ! -f "$LLVM_CONFIG" ]; then
+            echo "LLVM not found at $LLVM_CONFIG. Installing via Homebrew..."
+            brew install llvm
+          fi
+          echo "Using LLVM Config: $LLVM_CONFIG"
+
           mkdir -p mlc-llm/3rdparty/tvm/build
           cd mlc-llm/3rdparty/tvm/build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
-            -DUSE_LLVM=OFF \
+            -DUSE_LLVM="$LLVM_CONFIG" \
             -DUSE_METAL=OFF
           cmake --build . --parallel 4
           cd "$GITHUB_WORKSPACE"
