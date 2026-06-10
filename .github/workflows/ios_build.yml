@@ -115,7 +115,7 @@ jobs:
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DUSE_LLVM="$LLVM_CONFIG" \
-            -DUSE_METAL=OFF
+            -DUSE_METAL=ON
           cmake --build . --parallel 4
           cd "$GITHUB_WORKSPACE"
 
@@ -183,7 +183,7 @@ jobs:
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DTVM_HOME="$GITHUB_WORKSPACE/mlc-llm/3rdparty/tvm" \
-            -DUSE_METAL=OFF
+            -DUSE_METAL=ON
           cmake --build . --parallel 4
           cd "$GITHUB_WORKSPACE"
 
