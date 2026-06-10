@@ -157,25 +157,25 @@ jobs:
 
           # Step 4b: Parse and install mlc_llm dependencies except TVM/FFI packages
           python3 -m pip install toml
-          python3 <<'EOF'
-import os, toml, subprocess
-path = "mlc-llm/pyproject.toml"
-if not os.path.exists(path):
-    path = "mlc-llm/python/pyproject.toml"
-with open(path, "r") as f:
-    data = toml.load(f)
-dependencies = data.get("project", {}).get("dependencies", [])
-filtered_deps = []
-for dep in dependencies:
-    dep_name = dep.split(";")[0].split("<")[0].split(">")[0].split("=")[0].strip().lower()
-    if dep_name not in ["apache-tvm", "apache-tvm-ffi", "tvm", "tvm-ffi", "flashinfer-python"]:
-        filtered_deps.append(dep)
-for extra in ["fastapi", "uvicorn", "shortuuid"]:
-    if extra not in [d.split("<")[0].split(">")[0].split("=")[0].strip().lower() for d in filtered_deps]:
-        filtered_deps.append(extra)
-print("Installing dependencies:", filtered_deps)
-subprocess.run(["python3", "-m", "pip", "install"] + filtered_deps, check=True)
-EOF
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+          import os, toml, subprocess
+          path = "mlc-llm/pyproject.toml"
+          if not os.path.exists(path):
+              path = "mlc-llm/python/pyproject.toml"
+          with open(path, "r") as f:
+              data = toml.load(f)
+          dependencies = data.get("project", {}).get("dependencies", [])
+          filtered_deps = []
+          for dep in dependencies:
+              dep_name = dep.split(";")[0].split("<")[0].split(">")[0].split("=")[0].strip().lower()
+              if dep_name not in ["apache-tvm", "apache-tvm-ffi", "tvm", "tvm-ffi", "flashinfer-python"]:
+                  filtered_deps.append(dep)
+          for extra in ["fastapi", "uvicorn", "shortuuid"]:
+              if extra not in [d.split("<")[0].split(">")[0].split("=")[0].strip().lower() for d in filtered_deps]:
+                  filtered_deps.append(extra)
+          print("Installing dependencies:", filtered_deps)
+          subprocess.run(["python3", "-m", "pip", "install"] + filtered_deps, check=True)
+          EOF
 
           # Step 5: Build MLC-LLM C++ libraries linked against our source-built TVM.
           mkdir -p mlc-llm/build
