@@ -9,6 +9,8 @@ from coremltools.converters.mil.frontend.torch.ops import _get_inputs
 def new_ones(context, node):
     inputs = _get_inputs(context, node)
     shape = inputs[1]
+    if shape.dtype != "int32":
+        shape = mb.cast(x=shape, dtype="int32")
     res = mb.fill(shape=shape, value=1.0, name=node.name)
     context.add(res)
 
