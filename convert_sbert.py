@@ -26,8 +26,8 @@ def custom_bitwise_and(context, node):
     context.add(res)
 
 from coremltools.converters.mil.frontend.torch.torch_op_registry import _TORCH_OPS_REGISTRY
-_TORCH_OPS_REGISTRY["__and__"] = custom_bitwise_and
-_TORCH_OPS_REGISTRY["bitwise_and"] = custom_bitwise_and
+_TORCH_OPS_REGISTRY.name_to_func_mapping["__and__"] = custom_bitwise_and
+_TORCH_OPS_REGISTRY.name_to_func_mapping["bitwise_and"] = custom_bitwise_and
 
 model_id = "keepitreal/vietnamese-sbert"
 
@@ -52,13 +52,15 @@ print("Tracing model...")
 dummy_input = tokenizer("Xin chào Việt Nam", return_tensors="pt")
 traced_model = torch.jit.trace(wrapper, (dummy_input['input_ids'], dummy_input['attention_mask']))
 
+import numpy as np
+
 # Convert to CoreML
 print("Converting to CoreML...")
 mlmodel = ct.convert(
     traced_model,
     inputs=[
-        ct.TensorType(name="input_ids", shape=(1, ct.RangeDim(1, 128))),
-        ct.TensorType(name="attention_mask", shape=(1, ct.RangeDim(1, 128)))
+        ct.TensorType(name="input_ids", shape=(1, ct.RangeDim(1, 128)), dtype=np.int32),
+        ct.TensorType(name="attention_mask", shape=(1, ct.RangeDim(1, 128)), dtype=np.int32)
     ],
     outputs=[
         ct.TensorType(name="embeddings")
