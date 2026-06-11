@@ -450,6 +450,21 @@ jobs:
           echo "✓ All required libraries are present."
           echo "✓ Model bundle exists."
 
+      - name: Generate CoreML SBERT and Inject Dependencies
+        run: |
+          set -o pipefail
+          echo "Installing coremltools and transformers..."
+          python3 -m pip install coremltools transformers torch
+          
+          echo "Running convert_sbert.py..."
+          python3 convert_sbert.py
+          
+          echo "Installing xcodeproj gem..."
+          gem install xcodeproj
+          
+          echo "Injecting into Xcode project..."
+          ruby inject_coreml.rb
+
       - name: Build Xcode project (${{ matrix.name }})
         run: |
           set -o pipefail

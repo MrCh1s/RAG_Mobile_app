@@ -156,15 +156,108 @@ class LocalDatabase {
         return results
     }
 
-    // MARK: - Semantic Search (keyword-based relevance ranking)
+    // MARK: - Semantic Search (CoreML: vietnamese-sbert)
+    
+    // Uncomment the following imports manually if you want to inspect locally
+    // For GitHub Actions, they will be injected automatically
+    #if canImport(Transformers)
+    import Transformers
+    #endif
+    #if canImport(CoreML)
+    import CoreML
+    #endif
+    #if canImport(Accelerate)
+    import Accelerate
+    #endif
 
     /// Trả về tối đa `topK` ghi chú liên quan nhất với câu hỏi.
-    /// Thuật toán: tính điểm dựa trên số từ khớp (TF-IDF style) + boost khi trùng tags/folder.
-    func searchRelevantNotes(query: String, topK: Int = 8) -> [Note] {
+    /// Thuật toán: Dùng `vietnamese-sbert` CoreML model để tính Cosine Similarity.
+    func searchRelevantNotes(query: String, topK: Int = 8) async -> [Note] {
         let allNotes = fetchAllNotes()
         guard !allNotes.isEmpty else { return [] }
 
-        // 1. Tách từ khóa từ câu hỏi (bỏ stop-words ngắn)
+        #if canImport(Transformers) && canImport(CoreML) && canImport(Accelerate)
+        
+        // 1. Initialize Tokenizer from local folder
+        guard let tokenizerURL = Bundle.main.url(forResource: "VietnameseSBERT_Tokenizer", withExtension: nil),
+              let tokenizer = try? await AutoTokenizer.from(modelFolder: tokenizerURL) else {
+            print("Lỗi: Không thể load Tokenizer từ bundle")
+            return fallbackSearch(query: query, notes: allNotes, topK: topK)
+        }
+
+        // 2. Initialize Model
+        guard let model = try? VietnameseSBERT(configuration: MLModelConfiguration()) else {
+            print("Lỗi: Không thể load model VietnameseSBERT")
+            return fallbackSearch(query: query, notes: allNotes, topK: topK)
+        }
+
+        // Helper to get embeddings
+        func getEmbedding(text: String) -> [Float]? {
+            let inputIds = tokenizer.encode(text: text)
+            
+            guard let mlInputIds = try? MLMultiArray(shape: [1, 128], dataType: .int32),
+                  let mlAttentionMask = try? MLMultiArray(shape: [1, 128], dataType: .int32) else {
+                return nil
+            }
+            
+            for i in 0..<128 {
+                if i < inputIds.count {
+                    mlInputIds[i] = NSNumber(value: inputIds[i])
+                    mlAttentionMask[i] = 1
+                } else {
+                    mlInputIds[i] = 0 // padding token id is usually 0 or 1 for XLM-R, but attention_mask=0 ignores it
+                    mlAttentionMask[i] = 0
+                }
+            }
+            
+            guard let prediction = try? model.prediction(input_ids: mlInputIds, attention_mask: mlAttentionMask) else {
+                return nil
+            }
+            
+            let multiArray = prediction.embeddings
+            var vector = [Float](repeating: 0, count: multiArray.count)
+            for i in 0..<multiArray.count {
+                vector[i] = multiArray[i].floatValue
+            }
+            return vector
+        }
+
+        func cosineSimilarity(_ a: [Float], _ b: [Float]) -> Float {
+            var dotProduct: Float = 0
+            var magA: Float = 0
+            var magB: Float = 0
+            vDSP_dotpr(a, 1, b, 1, &dotProduct, vDSP_Length(a.count))
+            vDSP_svesq(a, 1, &magA, vDSP_Length(a.count))
+            vDSP_svesq(b, 1, &magB, vDSP_Length(b.count))
+            return dotProduct / (sqrt(magA) * sqrt(magB))
+        }
+
+        // 3. Convert query to vector
+        guard let queryVector = getEmbedding(text: query) else {
+            return fallbackSearch(query: query, notes: allNotes, topK: topK)
+        }
+
+        // 4. Score all notes
+        var scored: [(note: Note, similarity: Float)] = allNotes.compactMap { note in
+            let textToEmbed = "\(note.folderName) \(note.tags) \(note.content)"
+            guard let noteVector = getEmbedding(text: textToEmbed) else { return nil }
+            let sim = cosineSimilarity(queryVector, noteVector)
+            return (note, sim)
+        }
+
+        // 5. Sort and return
+        scored.sort { $0.similarity > $1.similarity }
+        let topNotes = scored.prefix(topK).map { $0.note }
+        return Array(topNotes)
+        
+        #else
+        // Fallback if modules are missing (e.g. local IDE)
+        return fallbackSearch(query: query, notes: allNotes, topK: topK)
+        #endif
+    }
+    
+    // MARK: - Fallback Lexical Search
+    func fallbackSearch(query: String, notes allNotes: [Note], topK: Int) -> [Note] {
         let stopWords: Set<String> = [
             "là", "và", "của", "có", "không", "trong", "này", "cho", "với",
             "về", "đã", "được", "thì", "mà", "còn", "khi", "để", "từ",
@@ -175,11 +268,9 @@ class LocalDatabase {
             .filter { $0.count > 2 && !stopWords.contains($0) }
         
         guard !queryTokens.isEmpty else {
-            // Nếu không có từ khóa hữu ích, trả về topK ghi chú mới nhất
             return Array(allNotes.prefix(topK))
         }
 
-        // 2. Tính điểm từng ghi chú
         var scored: [(note: Note, score: Double)] = allNotes.map { note in
             let noteTokens = tokenize(text: note.content + " " + note.tags)
             let noteTokenSet = Set(noteTokens)
@@ -188,33 +279,21 @@ class LocalDatabase {
 
             var score: Double = 0
             for qToken in queryTokens {
-                // Điểm khớp nội dung (TF: đếm số lần xuất hiện, normalized)
                 let tf = noteTokens.filter { $0 == qToken }.count
                 if tf > 0 {
                     let tfNorm = Double(tf) / Double(max(noteTokens.count, 1))
                     score += tfNorm * 10.0
                 }
-                // Boost x2 nếu từ khóa xuất hiện trong tags
-                if tagTokens.contains(qToken) {
-                    score += 2.0
-                }
-                // Boost x1.5 nếu từ khóa khớp với folder
-                if folderTokens.contains(qToken) {
-                    score += 1.5
-                }
-                // Bonus nếu toàn bộ token set chứa từ khóa
-                if noteTokenSet.contains(qToken) && tf == 0 {
-                    score += 0.5
-                }
+                if tagTokens.contains(qToken) { score += 2.0 }
+                if folderTokens.contains(qToken) { score += 1.5 }
+                if noteTokenSet.contains(qToken) && tf == 0 { score += 0.5 }
             }
             return (note: note, score: score)
         }
 
-        // 3. Sắp xếp theo điểm giảm dần, lấy topK
         scored.sort { $0.score > $1.score }
         let topNotes = scored.filter { $0.score > 0 }.prefix(topK).map { $0.note }
 
-        // 4. Nếu không có ghi chú nào khớp, fallback sang topK ghi chú mới nhất
         if topNotes.isEmpty {
             return Array(allNotes.prefix(topK))
         }

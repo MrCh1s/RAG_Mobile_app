@@ -136,43 +136,33 @@ final class ChatState: ObservableObject {
         assert(isChattable)
         switchToGenerating()
         
-        // RAG Logic: Semantic search - chỉ lấy tối đa 8 ghi chú liên quan nhất với câu hỏi
-        let relevantNotes = LocalDatabase.shared.searchRelevantNotes(query: prompt, topK: 8)
-        
-        // Format notes - giới hạn số ký tự để tránh OOM
-        var context = ""
-        var currentLength = 0
-        let maxContextChars = 3000 // Chặt chặt hơn vì đã lọc từ trước
-        
-        for note in relevantNotes {
-            let noteStr = "- \(note.createdAt): \(note.content)\n"
-            if currentLength + noteStr.count < maxContextChars {
-                context += noteStr
-                currentLength += noteStr.count
-            } else {
-                break
-            }
-        }
-        
-        let systemPrompt = """
-        BẠN LÀ MỘT TRỢ LÝ SỔ TAY THÔNG MINH.
-        CHỈ SỬ DỤNG NHỮNG THÔNG TIN DƯỚI ĐÂY ĐỂ TRẢ LỜI CÂU HỎI CỦA NGƯỜI DÙNG:
-        
-        === NỘI DUNG SỔ TAY ===
-        \(context.isEmpty ? "(Sổ tay hiện đang trống)" : context)
-        ========================
-        
-        QUY TẮC BẮT BUỘC:
-        1. CHỈ trả lời dựa trên nội dung trong mục "NỘI DUNG SỔ TAY".
-        2. Nếu câu hỏi không có thông tin trong sổ tay, bạn PHẢI trả lời: "Xin lỗi, thông tin này không có trong sổ tay của bạn. Bạn có muốn ghi chú thêm không?"
-        3. TUYỆT ĐỐI không sử dụng kiến thức bên ngoài, không tìm kiếm web.
-        4. Trả lời bằng tiếng Việt, súc tích và chính xác.
-        """
-        
         appendMessage(role: .user, message: prompt)
         appendMessage(role: .assistant, message: "")
         
         Task {
+            // RAG Logic: Semantic search - chỉ lấy tối đa 8 ghi chú liên quan nhất với câu hỏi
+            let relevantNotes = await LocalDatabase.shared.searchRelevantNotes(query: prompt, topK: 8)
+            
+            var notebookContext = ""
+            for (index, note) in relevantNotes.enumerated() {
+                notebookContext += "[Ghi chú \(index + 1)]\n"
+                notebookContext += "- Thư mục: \(note.folderName)\n"
+                notebookContext += "- Thẻ: \(note.tags)\n"
+                notebookContext += "- Nội dung: \(note.content)\n\n"
+            }
+            
+            let systemPrompt = """
+            BẠN LÀ MỘT TRỢ LÝ SỔ TAY THÔNG MINH. Dưới đây là các ghi chú cá nhân của người dùng có liên quan nhất đến câu hỏi (đã được tìm kiếm tự động).
+            
+            === NỘI DUNG SỔ TAY ===
+            \(notebookContext)
+            
+            QUY TẮC BẮT BUỘC:
+            1. ƯU TIÊN TUYỆT ĐỐI trả lời dựa trên nội dung sổ tay.
+            2. TRÍCH DẪN rõ ràng ghi chú nào được sử dụng.
+            3. Nếu sổ tay không có thông tin, hãy nói rõ "Trong sổ tay không có thông tin này" và trả lời theo kiến thức chung.
+            """
+            
             // Thêm câu hỏi thuần túy của người dùng vào lịch sử chat (không chứa systemPrompt)
             self.historyMessages.append(
                 ChatCompletionMessage(role: .user, content: prompt)
