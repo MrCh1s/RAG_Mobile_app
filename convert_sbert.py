@@ -14,6 +14,18 @@ def new_ones(context, node):
     res = mb.fill(shape=shape, value=1.0, name=node.name)
     context.add(res)
 
+@register_torch_op(override=True)
+def bitwise_and(context, node):
+    inputs = _get_inputs(context, node)
+    a = inputs[0]
+    b = inputs[1]
+    if a.dtype != "bool":
+        a = mb.cast(x=a, dtype="bool")
+    if b.dtype != "bool":
+        b = mb.cast(x=b, dtype="bool")
+    res = mb.logical_and(x=a, y=b, name=node.name)
+    context.add(res)
+
 model_id = "keepitreal/vietnamese-sbert"
 
 print("Loading model...")
