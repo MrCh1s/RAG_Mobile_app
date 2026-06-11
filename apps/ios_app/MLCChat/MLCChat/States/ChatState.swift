@@ -173,27 +173,29 @@ final class ChatState: ObservableObject {
         appendMessage(role: .assistant, message: "")
         
         Task {
-            // FIX: Luôn đặt system message ở đầu, tách biệt hoàn toàn với user message.
-            // Mỗi lần gọi, cập nhật lại system message (index 0) để nội dung sổ tay luôn mới.
-            let systemMessage = ChatCompletionMessage(role: .system, content: systemPrompt)
-            if self.historyMessages.isEmpty {
-                // Lần chat đầu tiên: khởi tạo lịch sử với system message
-                self.historyMessages.append(systemMessage)
-            } else {
-                // Các lần tiếp theo: cập nhật system message (index 0) để context ghi chú luôn mới nhất
-                self.historyMessages[0] = systemMessage
-            }
-            
-            // Append đúng chuẩn: chỉ nội dung thuần túy của người dùng vào role .user
+            // Thêm câu hỏi thuần túy của người dùng vào lịch sử chat (không chứa systemPrompt)
             self.historyMessages.append(
                 ChatCompletionMessage(role: .user, content: prompt)
             )
+            
+            // Tạo mảng message tạm thời để gửi đi cho lần chat này
+            var currentRequestMessages = self.historyMessages
+            if let lastMsg = currentRequestMessages.last {
+                let combinedContent = """
+                \(systemPrompt)
+
+                CÂU HỎI CỦA NGƯỜI DÙNG:
+                \(lastMsg.content ?? "")
+                """
+                // Ghi đè tin nhắn cuối cùng (user) bằng nội dung đã kẹp RAG context
+                currentRequestMessages[currentRequestMessages.count - 1] = ChatCompletionMessage(role: .user, content: combinedContent)
+            }
             
             var finishReasonLength = false
             var finalUsageTextLabel = ""
 
             for await res in await engine.chat.completions.create(
-                messages: self.historyMessages,
+                messages: currentRequestMessages,
                 stream_options: StreamOptions(include_usage: true)
             ) {
                 for choice in res.choices {
@@ -235,15 +237,14 @@ final class ChatState: ObservableObject {
                 self.historyMessages.removeLast()
             }
 
-            // FIX: Khi cần cắt bớt lịch sử, xóa từ index 1 (KHÔNG xóa index 0 là system message).
-            // Luôn xóa theo cặp user+assistant để giữ cấu trúc hợp lệ.
+            // FIX: Cắt bớt lịch sử chat nếu quá dài
             if finishReasonLength {
-                // historyMessages = [system, user, assistant, user, assistant, ...]
-                // Số message hội thoại (không tính system) phải là số chẵn
-                let conversationCount = self.historyMessages.count - 1 // bỏ system
+                // historyMessages = [user, assistant, user, assistant, ...]
+                // Số lượng tin nhắn phải là số chẵn. Ta xóa cặp cũ nhất ở đầu.
+                let conversationCount = self.historyMessages.count
                 if conversationCount >= 4 {
-                    // Xóa cặp user+assistant cũ nhất (index 1 và 2)
-                    self.historyMessages.removeSubrange(1..<3)
+                    // Xóa cặp user+assistant cũ nhất (index 0 và 1)
+                    self.historyMessages.removeSubrange(0..<2)
                 }
             }
 
@@ -451,9 +452,14 @@ extension ChatState {
         let systemPrompt = """
         Bạn là chuyên gia biên tập. Nhiệm vụ của bạn là chuẩn hóa và sửa lỗi chính tả ghi chú thô của người dùng. CHÚ Ý: Dựa vào ngữ cảnh tiếng Việt để sửa lỗi gõ vội/teencode (vd: 'onn' = 'ôn', 'hthành' = 'hoàn thành'). KHÔNG dịch các từ gõ sai sang tiếng Anh (vd: tuyệt đối không dịch 'onn' thành 'mở' hay 'on'). CHỈ in ra nội dung đã sửa dưới dạng 1 đoạn văn duy nhất. TUYỆT ĐỐI KHÔNG thêm bất kỳ câu giao tiếp nào (ví dụ: không nói 'Đây là...', 'Dưới đây là...'). KHÔNG sử dụng ký hiệu markdown block.
         """
+        let fullPrompt = """
+        \(systemPrompt)
+
+        === Văn bản cần xử lý ===
+        \(rawText)
+        """
         let messages = [
-            ChatCompletionMessage(role: .system, content: systemPrompt),
-            ChatCompletionMessage(role: .user, content: rawText)
+            ChatCompletionMessage(role: .user, content: fullPrompt)
         ]
         
         var replyText = ""
@@ -507,10 +513,14 @@ extension ChatState {
         Output: {"folder": "Tài chính", "tags": ["hóa đơn", "thanh toán"]}
         """
         
-        let userPrompt = "Input: \(rawText)\nOutput:"
+        let fullPrompt = """
+        \(systemPrompt)
+
+        Input: \(rawText)
+        Output:
+        """
         let messages = [
-            ChatCompletionMessage(role: .system, content: systemPrompt),
-            ChatCompletionMessage(role: .user, content: userPrompt)
+            ChatCompletionMessage(role: .user, content: fullPrompt)
         ]
         
         var replyText = ""
