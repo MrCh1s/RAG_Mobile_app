@@ -14,8 +14,7 @@ def new_ones(context, node):
     res = mb.fill(shape=shape, value=1.0, name=node.name)
     context.add(res)
 
-@register_torch_op(override=True)
-def bitwise_and(context, node):
+def custom_bitwise_and(context, node):
     inputs = _get_inputs(context, node)
     a = inputs[0]
     b = inputs[1]
@@ -25,6 +24,10 @@ def bitwise_and(context, node):
         b = mb.cast(x=b, dtype="bool")
     res = mb.logical_and(x=a, y=b, name=node.name)
     context.add(res)
+
+from coremltools.converters.mil.frontend.torch.torch_op_registry import _TORCH_OPS_REGISTRY
+_TORCH_OPS_REGISTRY.REGISTRY["__and__"] = custom_bitwise_and
+_TORCH_OPS_REGISTRY.REGISTRY["bitwise_and"] = custom_bitwise_and
 
 model_id = "keepitreal/vietnamese-sbert"
 
