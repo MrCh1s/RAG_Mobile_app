@@ -26,8 +26,8 @@ def custom_bitwise_and(context, node):
     context.add(res)
 
 from coremltools.converters.mil.frontend.torch.torch_op_registry import _TORCH_OPS_REGISTRY
-_TORCH_OPS_REGISTRY.REGISTRY["__and__"] = custom_bitwise_and
-_TORCH_OPS_REGISTRY.REGISTRY["bitwise_and"] = custom_bitwise_and
+_TORCH_OPS_REGISTRY["__and__"] = custom_bitwise_and
+_TORCH_OPS_REGISTRY["bitwise_and"] = custom_bitwise_and
 
 model_id = "keepitreal/vietnamese-sbert"
 
