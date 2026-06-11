@@ -1,6 +1,16 @@
 import torch
 from transformers import AutoModel, AutoTokenizer
 import coremltools as ct
+from coremltools.converters.mil.mil import Builder as mb
+from coremltools.converters.mil.frontend.torch.torch_op_registry import register_torch_op
+from coremltools.converters.mil.frontend.torch.ops import _get_inputs
+
+@register_torch_op(override=True)
+def new_ones(context, node):
+    inputs = _get_inputs(context, node)
+    shape = inputs[1]
+    res = mb.fill(shape=shape, fill_value=1.0, name=node.name)
+    context.add(res)
 
 model_id = "keepitreal/vietnamese-sbert"
 
