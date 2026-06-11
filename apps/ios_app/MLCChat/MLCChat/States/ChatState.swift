@@ -341,7 +341,6 @@ private extension ChatState {
 
     func mainResetChat() {
         Task {
-            await engine.reset()
             self.historyMessages = []
             self.streamingText = ""
 
@@ -459,8 +458,6 @@ extension ChatState {
         
         var replyText = ""
         
-        await engine.reset() // Ensure clean state before helper task
-        
         for await res in await engine.chat.completions.create(
             messages: messages,
             stream_options: StreamOptions(include_usage: true),
@@ -472,8 +469,6 @@ extension ChatState {
                 }
             }
         }
-        
-        await engine.reset() // Reset so main chat can prefill fresh
         
         let result = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
         return result.isEmpty ? rawText : result
@@ -520,8 +515,6 @@ extension ChatState {
         
         var replyText = ""
         
-        await engine.reset() // Ensure clean state before helper task
-        
         for await res in await engine.chat.completions.create(
             messages: messages,
             stream_options: StreamOptions(include_usage: true),
@@ -533,8 +526,6 @@ extension ChatState {
                 }
             }
         }
-        
-        await engine.reset() // Reset so main chat can prefill fresh
         
         replyText = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
         
