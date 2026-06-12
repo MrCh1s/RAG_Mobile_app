@@ -175,7 +175,7 @@ final class ChatState: ObservableObject {
                 \(systemPrompt)
 
                 CÂU HỎI CỦA NGƯỜI DÙNG:
-                \(lastMsg.content ?? "")
+                \(lastMsg.content?.asText() ?? "")
                 """
                 // Ghi đè tin nhắn cuối cùng (user) bằng nội dung đã kẹp RAG context
                 currentRequestMessages[currentRequestMessages.count - 1] = ChatCompletionMessage(role: .user, content: combinedContent)

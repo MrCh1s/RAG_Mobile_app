@@ -1,6 +1,20 @@
 import Foundation
 import SQLite3
 
+// For GitHub Actions, they will be injected automatically
+#if canImport(Tokenizers)
+import Tokenizers
+#endif
+#if canImport(Hub)
+import Hub
+#endif
+#if canImport(CoreML)
+import CoreML
+#endif
+#if canImport(Accelerate)
+import Accelerate
+#endif
+
 class LocalDatabase {
     static let shared = LocalDatabase()
     private var db: OpaquePointer?
@@ -158,21 +172,6 @@ class LocalDatabase {
 
     // MARK: - Semantic Search (CoreML: vietnamese-sbert)
     
-    // Uncomment the following imports manually if you want to inspect locally
-    // For GitHub Actions, they will be injected automatically
-    #if canImport(Tokenizers)
-    import Tokenizers
-    #endif
-    #if canImport(Hub)
-    import Hub
-    #endif
-    #if canImport(CoreML)
-    import CoreML
-    #endif
-    #if canImport(Accelerate)
-    import Accelerate
-    #endif
-
     /// Trả về tối đa `topK` ghi chú liên quan nhất với câu hỏi.
     /// Thuật toán: Dùng `vietnamese-sbert` CoreML model để tính Cosine Similarity.
     func searchRelevantNotes(query: String, topK: Int = 8) async -> [Note] {
