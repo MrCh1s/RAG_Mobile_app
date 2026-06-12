@@ -212,7 +212,7 @@ class LocalDatabase {
                 }
             }
             
-            guard let prediction = try? model.prediction(inputIds: mlInputIds, attentionMask: mlAttentionMask) else {
+            guard let prediction = try? model.prediction(input_ids: mlInputIds, attention_mask: mlAttentionMask) else {
                 return nil
             }
             
