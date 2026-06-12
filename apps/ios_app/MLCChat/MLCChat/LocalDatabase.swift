@@ -198,8 +198,8 @@ class LocalDatabase {
         func getEmbedding(text: String) -> [Float]? {
             let inputIds = tokenizer.encode(text: text)
             
-            guard let mlInputIds = try? MLMultiArray(shape: [1, 128], dataType: .int32),
-                  let mlAttentionMask = try? MLMultiArray(shape: [1, 128], dataType: .int32) else {
+            guard let mlInputIds = try? MLMultiArray(shape: [1, 128] as [NSNumber], dataType: .int32),
+                  let mlAttentionMask = try? MLMultiArray(shape: [1, 128] as [NSNumber], dataType: .int32) else {
                 return nil
             }
             
@@ -232,7 +232,7 @@ class LocalDatabase {
             vDSP_dotpr(a, 1, b, 1, &dotProduct, vDSP_Length(a.count))
             vDSP_svesq(a, 1, &magA, vDSP_Length(a.count))
             vDSP_svesq(b, 1, &magB, vDSP_Length(b.count))
-            return dotProduct / (sqrt(magA) * sqrt(magB))
+            return dotProduct / (magA.squareRoot() * magB.squareRoot())
         }
 
         // 3. Convert query to vector
@@ -245,7 +245,7 @@ class LocalDatabase {
             let textToEmbed = "\(note.folderName) \(note.tags) \(note.content)"
             guard let noteVector = getEmbedding(text: textToEmbed) else { return nil }
             let sim = cosineSimilarity(queryVector, noteVector)
-            return (note, sim)
+            return (note: note, similarity: sim)
         }
 
         // 5. Sort and return
