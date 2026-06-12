@@ -9,7 +9,7 @@ group = project.main_group.find_subpath('MLCChat', true)
 package_url = "https://github.com/huggingface/swift-transformers"
 requirement = { "kind" => "upToNextMajorVersion", "minimumVersion" => "0.1.7" }
 
-package_ref = project.root_object.package_references.find { |p| p.repositoryURL == package_url }
+package_ref = project.root_object.package_references.find { |p| p.respond_to?(:repositoryURL) && p.repositoryURL == package_url }
 if package_ref.nil?
     package_ref = project.new(Xcodeproj::Project::Object::XCRemoteSwiftPackageReference)
     package_ref.repositoryURL = package_url
