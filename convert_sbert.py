@@ -25,9 +25,15 @@ def custom_bitwise_and(context, node):
     res = mb.logical_and(x=a, y=b, name=node.name)
     context.add(res)
 
+# Monkey-patch get_func to intercept "__and__" and "bitwise_and"
 from coremltools.converters.mil.frontend.torch.torch_op_registry import _TORCH_OPS_REGISTRY
-_TORCH_OPS_REGISTRY.name_to_func_mapping["__and__"] = custom_bitwise_and
-_TORCH_OPS_REGISTRY.name_to_func_mapping["bitwise_and"] = custom_bitwise_and
+original_get_func = _TORCH_OPS_REGISTRY.get_func
+def my_get_func(name):
+    if name in ["__and__", "bitwise_and", "__and_"]:
+        return custom_bitwise_and
+    return original_get_func(name)
+
+_TORCH_OPS_REGISTRY.get_func = my_get_func
 
 model_id = "keepitreal/vietnamese-sbert"
 
