@@ -160,8 +160,11 @@ class LocalDatabase {
     
     // Uncomment the following imports manually if you want to inspect locally
     // For GitHub Actions, they will be injected automatically
-    #if canImport(Transformers)
-    import Transformers
+    #if canImport(Tokenizers)
+    import Tokenizers
+    #endif
+    #if canImport(Hub)
+    import Hub
     #endif
     #if canImport(CoreML)
     import CoreML
@@ -176,7 +179,7 @@ class LocalDatabase {
         let allNotes = fetchAllNotes()
         guard !allNotes.isEmpty else { return [] }
 
-        #if canImport(Transformers) && canImport(CoreML) && canImport(Accelerate)
+        #if canImport(Tokenizers) && canImport(CoreML) && canImport(Accelerate)
         
         // 1. Initialize Tokenizer from local folder
         guard let tokenizerURL = Bundle.main.url(forResource: "VietnameseSBERT_Tokenizer", withExtension: nil),
@@ -210,7 +213,7 @@ class LocalDatabase {
                 }
             }
             
-            guard let prediction = try? model.prediction(input_ids: mlInputIds, attention_mask: mlAttentionMask) else {
+            guard let prediction = try? model.prediction(inputIds: mlInputIds, attentionMask: mlAttentionMask) else {
                 return nil
             }
             
