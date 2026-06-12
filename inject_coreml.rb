@@ -36,7 +36,7 @@ if file_ref.nil?
     file_ref = group.new_file('VietnameseSBERT.mlpackage')
     build_file = project.new(Xcodeproj::Project::Object::PBXBuildFile)
     build_file.file_ref = file_ref
-    target.sources_build_phase.files << build_file
+    target.source_build_phase.files << build_file
 end
 
 # 3. Add VietnameseSBERT_Tokenizer folder reference
