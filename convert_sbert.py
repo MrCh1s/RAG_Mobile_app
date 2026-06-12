@@ -88,5 +88,7 @@ tokenizer_path = "apps/ios_app/MLCChat/MLCChat/VietnameseSBERT_Tokenizer"
 os.makedirs(tokenizer_path, exist_ok=True)
 snapshot_dir = snapshot_download(repo_id=model_id, allow_patterns=["*.json", "*.txt", "*.model"])
 for f in os.listdir(snapshot_dir):
-    shutil.copy(os.path.join(snapshot_dir, f), tokenizer_path)
+    src_path = os.path.join(snapshot_dir, f)
+    if os.path.isfile(src_path):
+        shutil.copy(src_path, tokenizer_path)
 print("Tokenizer files saved.")
