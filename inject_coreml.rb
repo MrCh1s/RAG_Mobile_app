@@ -7,7 +7,7 @@ group = project.main_group.find_subpath('MLCChat', true)
 
 # 1. Add swift-transformers SPM package
 package_url = "https://github.com/huggingface/swift-transformers"
-requirement = Xcodeproj::Project::Object::XCRemoteSwiftPackageReference::Requirement.upToNextMajorVersion('0.1.7')
+requirement = { "kind" => "upToNextMajorVersion", "minimumVersion" => "0.1.7" }
 
 package_ref = project.root_object.package_references.find { |p| p.repositoryURL == package_url }
 if package_ref.nil?
