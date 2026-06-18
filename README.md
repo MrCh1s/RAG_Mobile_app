@@ -23,30 +23,51 @@ Anh/chị cần bật chế độ này trước khi tiến hành cài đặt ứ
 
 ---
 
-## 🚀 Các bước cài đặt bằng Sideloadly (Dành cho cả Windows và macOS)
+## 🚀 Các bước cài đặt bằng Sideloadly
 
-### Bước 2: Cài đặt Sideloadly
-- **Đối với Windows:**
-  - Tải và cài đặt **iTunes** (Bản tải trực tiếp từ web Apple, *không tải từ Microsoft Store*): [Link tải iTunes](https://www.apple.com/itunes/)
-  - Tải và cài đặt **iCloud cho Windows**: [Link tải iCloud](https://support.apple.com/en-us/HT204283)
-  - Tải và cài đặt **Sideloadly**: [Link tải Sideloadly](https://sideloadly.io/)
-- **Đối với macOS:**
-  - Mac đã tích hợp sẵn các công cụ cần thiết, anh/chị **không cần** cài iTunes/iCloud.
-  - Chỉ cần tải và cài đặt ứng dụng **Sideloadly** phiên bản cho macOS: [Link tải Sideloadly](https://sideloadly.io/)
+Quá trình kết nối và cài đặt có đôi chút khác biệt. Anh/chị vui lòng chọn "bản" hướng dẫn phù hợp với máy tính của mình dưới đây:
 
-### Bước 3: Kết nối iPhone với máy tính
-1. Cắm cáp kết nối iPhone với máy tính (Windows hoặc Mac).
+### 🍎 Bản 1: Dành cho người dùng macOS
+
+**Bước 2: Cài đặt Sideloadly**
+- Mac đã tích hợp sẵn các công cụ cần thiết, anh/chị **không cần** cài iTunes hay iCloud.
+- Chỉ cần tải và cài đặt ứng dụng **Sideloadly** phiên bản cho macOS: [Link tải Sideloadly](https://sideloadly.io/)
+
+**Bước 3: Kết nối iPhone với Mac**
+1. Cắm cáp kết nối iPhone với máy Mac.
 2. Mở khóa màn hình iPhone. Nếu hiện thông báo **"Tin cậy máy tính này" (Trust this computer)**, hãy bấm **Tin cậy** và nhập mật khẩu màn hình.
-3. **Đối với Windows:** Mở phần mềm iTunes lên để đảm bảo máy tính đã nhận diện được điện thoại.
-4. **Đối với Mac:** Mở Finder và nhìn ở cột bên trái (dưới mục Locations/Vị trí) để đảm bảo iPhone đã xuất hiện.
+3. Mở **Finder** và nhìn ở cột bên trái (dưới mục Locations/Vị trí) để đảm bảo iPhone đã xuất hiện.
 
-### Bước 4: Cài đặt file .ipa
+**Bước 4: Cài đặt file .ipa**
 1. Mở phần mềm **Sideloadly** lên.
 2. Ở mục **iDevice**, chọn thiết bị iPhone của anh/chị (nó sẽ hiện ra mã thiết bị nếu kết nối thành công).
 3. Ở ô **Apple ID**, nhập tài khoản Apple ID của anh/chị (nên dùng Apple ID phụ).
 4. Bấm vào biểu tượng **IPA** (hình cái hộp ở cột bên trái) và chọn đường dẫn đến file `MLCChat-Qwen2.5-1.5B.ipa` anh/chị vừa tải về.
 5. Bấm nút **Start** để bắt đầu.
 6. Sideloadly sẽ yêu cầu anh/chị nhập mật khẩu Apple ID. Hãy nhập mật khẩu. *(Lưu ý: Sideloadly chỉ gửi tài khoản này lên server của Apple để xin chữ ký số, hoàn toàn không lưu trữ).*
+7. Chờ đợi từ 3-5 phút. Khi thanh trạng thái hiện chữ **Done**, ứng dụng đã được cài lên điện thoại!
+
+---
+
+### 🪟 Bản 2: Dành cho người dùng Windows
+
+**Bước 2: Cài đặt Sideloadly & iTunes**
+- Tải và cài đặt **iTunes** (Bản tải trực tiếp từ web Apple, *không tải từ Microsoft Store*): [Link tải iTunes](https://www.apple.com/itunes/)
+- Tải và cài đặt **iCloud cho Windows**: [Link tải iCloud](https://support.apple.com/en-us/HT204283)
+- Tải và cài đặt **Sideloadly**: [Link tải Sideloadly](https://sideloadly.io/)
+
+**Bước 3: Kết nối iPhone với máy tính Windows**
+1. Cắm cáp kết nối iPhone với máy tính.
+2. Mở khóa màn hình iPhone. Nếu hiện thông báo **"Tin cậy máy tính này" (Trust this computer)**, hãy bấm **Tin cậy** và nhập mật khẩu màn hình.
+3. Mở phần mềm **iTunes** lên để đảm bảo máy tính đã nhận diện được điện thoại.
+
+**Bước 4: Cài đặt file .ipa**
+1. Mở phần mềm **Sideloadly** lên.
+2. Ở mục **iDevice**, chọn thiết bị iPhone của anh/chị.
+3. Ở ô **Apple ID**, nhập tài khoản Apple ID của anh/chị.
+4. Bấm vào biểu tượng **IPA** và chọn đường dẫn đến file `MLCChat-Qwen2.5-1.5B.ipa` anh/chị vừa tải về.
+5. Bấm nút **Start** để bắt đầu.
+6. Sideloadly sẽ yêu cầu anh/chị nhập mật khẩu Apple ID.
 7. Chờ đợi từ 3-5 phút. Khi thanh trạng thái hiện chữ **Done**, ứng dụng đã được cài lên điện thoại!
 
 ---
