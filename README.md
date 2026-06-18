@@ -2,9 +2,18 @@
 
 Vì ứng dụng này tích hợp bộ não AI Qwen2.5 (chạy cục bộ 100% offline) và sử dụng bộ nhớ RAM rất lớn, ứng dụng chưa được đưa lên App Store. Để cài đặt file `.ipa` anh/chị tải về từ GitHub Actions lên iPhone, anh/chị cần sử dụng phương pháp **Sideloading**.
 
-Dưới đây là hướng dẫn chi tiết cách cài đặt qua **Sideloadly** (công cụ dễ nhất dành cho người dùng Windows).
+---
+
+## 📱 Hướng dẫn sử dụng ứng dụng
+
+**Bước 1:** Bấm vào model `qwen2.5-1.5b......`
+**Bước 2:** Đợi nạp model, sau đó thoát ra khỏi màn hình chat
+**Bước 3:** Vào biểu tượng sổ tay để điền ghi chú, thực hiện clean up, phân loại ghi chú
+**Bước 4:** Tiến hành hỏi đáp
 
 ---
+
+Dưới đây là hướng dẫn chi tiết cách cài đặt qua **Sideloadly** (công cụ dễ nhất dành cho người dùng Windows).
 
 ## 🛠 Yêu cầu chuẩn bị
 1. File **`MLCChat-Qwen2.5-1.5B.ipa`** (Tải về từ mục Artifacts trong tab Actions trên GitHub của anh/chị).
@@ -55,15 +64,6 @@ Anh/chị chưa thể mở app ngay lập tức. Apple yêu cầu anh/chị ph�
 - Bấm **Tin cậy "Email_của_anh/chị" (Trust "...")** và xác nhận.
 
 🎉 **HOÀN TẤT!** Bây giờ anh/chị có thể quay ra màn hình chính, mở ứng dụng và trải nghiệm AI Sổ tay 100% Offline (bao gồm cả Semantic Search)!
-
----
-
-## 📱 Hướng dẫn sử dụng ứng dụng
-
-**Bước 1:** Bấm vào model `qwen2.5-1.5b......`
-**Bước 2:** Đợi nạp model, sau đó thoát ra khỏi màn hình chat
-**Bước 3:** Vào biểu tượng sổ tay để điền ghi chú, thực hiện clean up, phân loại ghi chú
-**Bước 4:** Tiến hành hỏi đáp
 
 ---
 
