@@ -1,21 +1,13 @@
 # Hướng dẫn Cài đặt Ứng dụng AI Notebook (.ipa) lên iPhone/iPad
 
-<<<<<<< HEAD
-Vì ứng dụng này tích hợp bộ não AI Qwen2.5 (chạy cục bộ 100% offline) và sử dụng bộ nhớ RAM rất lớn, ứng dụng chưa được đưa lên App Store. Để cài đặt file `.ipa` bạn tải về từ GitHub Actions lên iPhone, bạn cần sử dụng phương pháp **Sideloading**.
-=======
 Vì ứng dụng này tích hợp bộ não AI Qwen2.5 (chạy cục bộ 100% offline) và sử dụng bộ nhớ RAM rất lớn, ứng dụng chưa được đưa lên App Store. Để cài đặt file `.ipa` anh/chị tải về từ GitHub Actions lên iPhone, anh/chị cần sử dụng phương pháp **Sideloading**.
->>>>>>> fb8141b ([skip ci] Update README.md: không cần build lại)
 
 Dưới đây là hướng dẫn chi tiết cách cài đặt qua **Sideloadly** (công cụ dễ nhất dành cho người dùng Windows).
 
 ---
 
 ## 🛠 Yêu cầu chuẩn bị
-<<<<<<< HEAD
-1. File **`MLCChat-Qwen2.5-1.5B.ipa`** (Tải về từ mục Artifacts trong tab Actions trên GitHub của bạn).
-=======
 1. File **`MLCChat-Qwen2.5-1.5B.ipa`** (Tải về từ mục Artifacts trong tab Actions trên GitHub của anh/chị).
->>>>>>> fb8141b ([skip ci] Update README.md: không cần build lại)
 2. Máy tính Windows (hoặc Mac).
 3. Cáp kết nối iPhone với máy tính.
 4. Tài khoản Apple ID (Khuyến cáo nên tạo một Apple ID phụ/ảo để đảm bảo an toàn tuyệt đối).
@@ -37,30 +29,18 @@ Dưới đây là hướng dẫn chi tiết cách cài đặt qua **Sideloadly**
 
 ### Bước 3: Cài đặt file .ipa
 1. Mở phần mềm **Sideloadly** lên.
-<<<<<<< HEAD
-2. Ở mục **iDevice**, chọn thiết bị iPhone của bạn (nó sẽ hiện ra mã thiết bị nếu kết nối thành công).
-3. Ở ô **Apple ID**, nhập tài khoản Apple ID của bạn (nên dùng Apple ID phụ).
-4. Bấm vào biểu tượng **IPA** (hình cái hộp ở cột bên trái) và chọn đường dẫn đến file `MLCChat-Qwen2.5-1.5B.ipa` bạn vừa tải về.
-5. Bấm nút **Start** để bắt đầu.
-6. Sideloadly sẽ yêu cầu bạn nhập mật khẩu Apple ID. Hãy nhập mật khẩu. *(Lưu ý: Sideloadly chỉ gửi tài khoản này lên server của Apple để xin chữ ký số, hoàn toàn không lưu trữ).*
-=======
 2. Ở mục **iDevice**, chọn thiết bị iPhone của anh/chị (nó sẽ hiện ra mã thiết bị nếu kết nối thành công).
 3. Ở ô **Apple ID**, nhập tài khoản Apple ID của anh/chị (nên dùng Apple ID phụ).
 4. Bấm vào biểu tượng **IPA** (hình cái hộp ở cột bên trái) và chọn đường dẫn đến file `MLCChat-Qwen2.5-1.5B.ipa` anh/chị vừa tải về.
 5. Bấm nút **Start** để bắt đầu.
 6. Sideloadly sẽ yêu cầu anh/chị nhập mật khẩu Apple ID. Hãy nhập mật khẩu. *(Lưu ý: Sideloadly chỉ gửi tài khoản này lên server của Apple để xin chữ ký số, hoàn toàn không lưu trữ).*
->>>>>>> fb8141b ([skip ci] Update README.md: không cần build lại)
 7. Chờ đợi từ 3-5 phút. Khi thanh trạng thái hiện chữ **Done**, ứng dụng đã được cài lên điện thoại!
 
 ---
 
 ## 🔓 Bước 4: Cấp quyền chạy ứng dụng trên iPhone (Rất quan trọng)
 
-<<<<<<< HEAD
-Bạn chưa thể mở app ngay lập tức. Apple yêu cầu bạn phải "Tin cậy" nhà phát triển.
-=======
 Anh/chị chưa thể mở app ngay lập tức. Apple yêu cầu anh/chị phải "Tin cậy" nhà phát triển.
->>>>>>> fb8141b ([skip ci] Update README.md: không cần build lại)
 
 ### 1. Bật chế độ Nhà phát triển (Developer Mode) - Chỉ dành cho iOS 16 trở lên
 - Mở **Cài đặt (Settings)** > **Quyền riêng tư & Bảo mật (Privacy & Security)**.
@@ -71,12 +51,6 @@ Anh/chị chưa thể mở app ngay lập tức. Apple yêu cầu anh/chị ph�
 ### 2. Tin cậy Chứng chỉ Ứng dụng
 - Mở **Cài đặt (Settings)** > **Cài đặt chung (General)**.
 - Chọn **Quản lý VPN & Thiết bị (VPN & Device Management)**.
-<<<<<<< HEAD
-- Dưới mục *Ứng dụng của nhà phát triển (Developer App)*, bạn sẽ thấy email Apple ID của mình. Bấm vào đó.
-- Bấm **Tin cậy "Email_của_bạn" (Trust "...")** và xác nhận.
-
-🎉 **HOÀN TẤT!** Bây giờ bạn có thể quay ra màn hình chính, mở ứng dụng và trải nghiệm AI Sổ tay 100% Offline (bao gồm cả Semantic Search)!
-=======
 - Dưới mục *Ứng dụng của nhà phát triển (Developer App)*, anh/chị sẽ thấy email Apple ID của mình. Bấm vào đó.
 - Bấm **Tin cậy "Email_của_anh/chị" (Trust "...")** và xác nhận.
 
@@ -90,14 +64,9 @@ Anh/chị chưa thể mở app ngay lập tức. Apple yêu cầu anh/chị ph�
 **Bước 2:** Đợi nạp model, sau đó thoát ra khỏi màn hình chat
 **Bước 3:** Vào biểu tượng sổ tay để điền ghi chú, thực hiện clean up, phân loại ghi chú
 **Bước 4:** Tiến hành hỏi đáp
->>>>>>> fb8141b ([skip ci] Update README.md: không cần build lại)
 
 ---
 
 ## ⚠️ Lưu ý quan trọng
-<<<<<<< HEAD
-- **Gia hạn chứng chỉ:** Vì dùng tài khoản Apple ID miễn phí, ứng dụng sẽ bị **hết hạn sau 7 ngày**. Sau 7 ngày, app sẽ bị văng khi mở. Bạn KHÔNG cần xóa app, chỉ cần cắm cáp vào máy tính, mở Sideloadly và làm lại Bước 3 (dữ liệu sổ tay vẫn sẽ được giữ nguyên).
-=======
 - **Gia hạn chứng chỉ:** Vì dùng tài khoản Apple ID miễn phí, ứng dụng sẽ bị **hết hạn sau 7 ngày**. Sau 7 ngày, app sẽ bị văng khi mở. Anh/chị KHÔNG cần xóa app, chỉ cần cắm cáp vào máy tính, mở Sideloadly và làm lại Bước 3 (dữ liệu sổ tay vẫn sẽ được giữ nguyên).
->>>>>>> fb8141b ([skip ci] Update README.md: không cần build lại)
 - **Tránh tràn RAM:** App tích hợp lõi AI nên ngốn rất nhiều RAM. Hãy **đóng các ứng dụng chạy ngầm** (như game nặng, camera) trước khi hỏi đáp với AI để tránh bị văng app do iOS tự động kill process.
